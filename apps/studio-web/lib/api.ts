@@ -69,6 +69,12 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (response.status === 204) return undefined as T;
   return response.json();
 }
+
+async function requestItems<T>(path: string): Promise<{ items: T[] }> {
+  const response = await request<{ items?: T[] | null }>(path);
+  return { items: Array.isArray(response.items) ? response.items : [] };
+}
+
 export const api = {
   me: () => request<Principal>("/v1/auth/me"),
   setup: (input: object) =>
@@ -83,9 +89,9 @@ export const api = {
     }),
   logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
   list: (ws: string) =>
-    request<{ items: Content[] }>(`/v1/workspaces/${ws}/contents`),
+    requestItems<Content>(`/v1/workspaces/${ws}/contents`),
   search: (ws: string, q: string) =>
-    request<{ items: Content[] }>(
+    requestItems<Content>(
       `/v1/workspaces/${ws}/search?q=${encodeURIComponent(q)}`,
     ),
   create: (ws: string, input: object) =>
@@ -115,7 +121,7 @@ export const api = {
       body: JSON.stringify({ content_id, locale }),
     }),
   assets: (ws: string) =>
-    request<{ items: Asset[] }>(`/v1/workspaces/${ws}/assets/`),
+    requestItems<Asset>(`/v1/workspaces/${ws}/assets/`),
   uploadAsset: async (ws: string, file: File) => {
     const plan = await request<{
       upload_id: string;

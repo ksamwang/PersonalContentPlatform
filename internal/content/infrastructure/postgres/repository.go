@@ -103,7 +103,7 @@ func (r *Repository) GetDraft(ctx context.Context, workspaceID, localizationID u
 	return d, err
 }
 func scanContentRows(rows pgx.Rows) ([]domain.Content, error) {
-	var result []domain.Content
+	result := []domain.Content{}
 	for rows.Next() {
 		var c domain.Content
 		var l domain.Localization
