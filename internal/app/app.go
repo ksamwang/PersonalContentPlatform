@@ -27,6 +27,9 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/health"
 	publicationhttp "github.com/ksamwang/PersonalContentPlatform/internal/publication/transport"
+	settingsapp "github.com/ksamwang/PersonalContentPlatform/internal/settings/application"
+	settingspg "github.com/ksamwang/PersonalContentPlatform/internal/settings/infrastructure/postgres"
+	settingshttp "github.com/ksamwang/PersonalContentPlatform/internal/settings/transport"
 	"net/http"
 	"time"
 )
@@ -41,6 +44,7 @@ type App struct {
 	knowledge   *knowledgehttp.HTTP
 	ai          *aihttp.HTTP
 	integration *integrationhttp.HTTP
+	settings    *settingshttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -60,6 +64,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 	knowledgeService := knowledgeapp.New(knowledgepg.New(db))
 	aiService := aiapp.New(db, openai.New(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
 	integrationRepository := integrationpg.New(db)
+	settingsRepository := settingspg.New(db)
 	return &App{
 		DB:          db,
 		StartedAt:   time.Now().UTC(),
@@ -70,6 +75,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 		knowledge:   knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession),
 		ai:          aihttp.NewHTTP(aiService, identityTransport.RequireSession),
 		integration: integrationhttp.NewHTTP(integrationapp.NewExportService(integrationRepository), integrationapp.NewWebhookService(integrationRepository), identityTransport.RequireSession),
+		settings:    settingshttp.NewHTTP(settingsapp.New(settingsRepository), identityTransport.RequireSession),
 	}, nil
 }
 func (a *App) Router() http.Handler {
@@ -83,5 +89,6 @@ func (a *App) Router() http.Handler {
 	a.knowledge.Register(r)
 	a.ai.Register(r)
 	a.integration.Register(r)
+	a.settings.Register(r)
 	return r
 }

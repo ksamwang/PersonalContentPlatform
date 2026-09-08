@@ -11,6 +11,7 @@ import (
 	integrationhttp "github.com/ksamwang/PersonalContentPlatform/internal/integration/transport"
 	knowledgehttp "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/transport"
 	publicationhttp "github.com/ksamwang/PersonalContentPlatform/internal/publication/transport"
+	settingshttp "github.com/ksamwang/PersonalContentPlatform/internal/settings/transport"
 )
 
 func TestRouterRegistersAllModuleRoutes(t *testing.T) {
@@ -23,6 +24,7 @@ func TestRouterRegistersAllModuleRoutes(t *testing.T) {
 		knowledge:   knowledgehttp.NewHTTP(nil, passthrough),
 		ai:          aihttp.NewHTTP(nil, passthrough),
 		integration: integrationhttp.NewHTTP(nil, nil, passthrough),
+		settings:    settingshttp.NewHTTP(nil, passthrough),
 	}
 	if router := application.Router(); router == nil {
 		t.Fatal("expected router")
