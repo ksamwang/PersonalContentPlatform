@@ -26,6 +26,19 @@ go.work.sum
 
 # env file
 .env
+.env.*
+!.env.example
+
+# Frontend
+node_modules/
+.next/
+dist/
+
+# Local artifacts
+bin/
+tmp/
+data/
+*.log
 
 # Editor/IDE
 # .idea/
