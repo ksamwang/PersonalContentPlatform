@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -23,6 +25,9 @@ type Config struct {
 }
 
 func Load() (Config, error) {
+	if err := loadDotEnv(); err != nil {
+		return Config{}, err
+	}
 	databaseURL, err := secretValue("DATABASE_URL")
 	if err != nil {
 		return Config{}, err
@@ -42,6 +47,21 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("SUPPORTED_LOCALES must not be empty")
 	}
 	return c, nil
+}
+
+func loadDotEnv() error {
+	configuredPath := strings.TrimSpace(os.Getenv("APP_ENV_FILE"))
+	path := configuredPath
+	if path == "" {
+		path = ".env"
+	}
+	if err := godotenv.Load(path); err != nil {
+		if configuredPath == "" && os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("load environment file %q: %w", path, err)
+	}
+	return nil
 }
 
 func secretValue(key string) (string, error) {

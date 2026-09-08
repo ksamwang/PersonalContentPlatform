@@ -20,7 +20,7 @@ scripts/              Windows 验证及 Linux 交叉编译脚本
 
 需要 Go 1.26、Node.js 24、npm 和 PostgreSQL 17（推荐 pgvector 镜像）。
 
-1. 复制 `.env.example` 为 `.env`，填写开发配置。
+1. 复制 `.env.example` 为项目根目录的 `.env`，填写开发配置。程序默认自动加载该文件；也可通过 `APP_ENV_FILE` 指定其他路径，已有系统环境变量优先。
 2. 执行 `go run ./cmd/migrate up` 初始化数据库。
 3. 分别启动 API、Worker、Studio 和公开站点。
 
