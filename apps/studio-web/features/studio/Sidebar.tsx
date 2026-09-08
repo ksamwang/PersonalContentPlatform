@@ -6,14 +6,10 @@ import {
   Settings2,
   Shapes,
 } from "lucide-react";
-const items = [
-  [Library, "内容"],
-  [Inbox, "收件箱"],
-  [Shapes, "合集"],
-  [Search, "发现"],
-  [BookOpen, "发布"],
-] as const;
-export function Sidebar() {
+
+export function Sidebar({ onSearch }: { onSearch: () => void }) {
+  const publicSite =
+    process.env.NEXT_PUBLIC_PUBLIC_SITE_URL ?? "http://localhost:3000/zh";
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -21,16 +17,36 @@ export function Sidebar() {
         <span>Content Studio</span>
       </div>
       <nav aria-label="主要导航">
-        {items.map(([Icon, label], i) => (
-          <button className={i === 0 ? "active" : ""} key={label}>
-            <Icon aria-hidden size={19} />
-            <span>{label}</span>
-          </button>
-        ))}
+        <button
+          className="active"
+          onClick={() => document.querySelector("#main")?.scrollIntoView()}
+        >
+          <Library aria-hidden size={19} />
+          <span>内容</span>
+        </button>
+        <button disabled title="收件箱将在后续版本开放">
+          <Inbox aria-hidden size={19} />
+          <span>收件箱</span>
+          <small>规划中</small>
+        </button>
+        <button disabled title="合集将在后续版本开放">
+          <Shapes aria-hidden size={19} />
+          <span>合集</span>
+          <small>规划中</small>
+        </button>
+        <button onClick={onSearch}>
+          <Search aria-hidden size={19} />
+          <span>发现</span>
+        </button>
+        <a href={publicSite} target="_blank" rel="noreferrer">
+          <BookOpen aria-hidden size={19} />
+          <span>发布站点</span>
+        </a>
       </nav>
-      <button className="settings">
+      <button className="settings" disabled title="设置界面将在后续版本开放">
         <Settings2 aria-hidden size={19} />
         <span>设置</span>
+        <small>规划中</small>
       </button>
     </aside>
   );

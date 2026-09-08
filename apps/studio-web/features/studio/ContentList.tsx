@@ -5,17 +5,23 @@ export function ContentList({
   items,
   selected,
   onSelect,
+  searching,
 }: {
   items: Content[];
   selected?: string;
   onSelect: (c: Content) => void;
+  searching?: boolean;
 }) {
   if (!items.length)
     return (
       <div className="empty">
         <FileText aria-hidden />
-        <h2>还没有内容</h2>
-        <p>创建第一篇内容，开始建立你的长期内容资产。</p>
+        <h2>{searching ? "没有匹配内容" : "还没有内容"}</h2>
+        <p>
+          {searching
+            ? "请尝试其他关键词。"
+            : "创建第一篇内容，开始建立你的长期内容资产。"}
+        </p>
       </div>
     );
   return (

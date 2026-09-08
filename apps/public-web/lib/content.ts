@@ -16,7 +16,7 @@ export async function getPage(
 ): Promise<PublishedPage | null> {
   const response = await fetch(
     `${origin}/v1/public/${workspace}/${locale}/${type}/${slug}`,
-    { next: { revalidate: 60, tags: [`${locale}:${type}:${slug}`] } },
+    { cache: "no-store" },
   );
   if (response.status === 404) return null;
   if (!response.ok) throw new Error("Published content is unavailable");
@@ -26,7 +26,7 @@ export async function listPages(locale: string): Promise<PublishedPage[]> {
   try {
     const response = await fetch(
       `${origin}/v1/public/${workspace}/${locale}/contents`,
-      { next: { revalidate: 60, tags: [`${locale}:index`] } },
+      { cache: "no-store" },
     );
     if (!response.ok) return [];
     return (await response.json()).items;

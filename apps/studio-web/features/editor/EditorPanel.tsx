@@ -18,11 +18,16 @@ export function EditorPanel({
     [title, setTitle] = useState(""),
     [summary, setSummary] = useState(""),
     [status, setStatus] = useState("加载中"),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [loadError, setLoadError] = useState(""),
+    [reloadToken, setReloadToken] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef<Draft | null>(null);
   const titleRef = useRef("");
   const summaryRef = useRef("");
+  const localizationRef = useRef(localization.id);
+  const saveQueue = useRef<Promise<Draft | null>>(Promise.resolve(null));
+  localizationRef.current = localization.id;
   const editor = useEditor({
     extensions: [StarterKit],
     content: "",
@@ -32,6 +37,7 @@ export function EditorPanel({
   useEffect(() => {
     let active = true;
     setDraft(null);
+    setLoadError("");
     api
       .draft(workspace, localization.id)
       .then((d) => {
@@ -42,40 +48,66 @@ export function EditorPanel({
         titleRef.current = d.title;
         setSummary(d.summary);
         summaryRef.current = d.summary;
-        editor?.commands.setContent(d.body);
+        editor?.commands.setContent(d.body, { emitUpdate: false });
         setStatus("已保存");
       })
-      .catch(() => setStatus("草稿加载失败"));
+      .catch((err) => {
+        if (!active) return;
+        const message = err instanceof Error ? err.message : "请检查服务后重试";
+        setLoadError(message);
+        setStatus("草稿加载失败");
+      });
     return () => {
       active = false;
+      if (timer.current) clearTimeout(timer.current);
     };
-  }, [workspace, localization.id, editor]);
+  }, [workspace, localization.id, editor, reloadToken]);
   function scheduleSave() {
     setStatus("等待保存");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void save(), 900);
   }
-  async function save() {
-    if (!draftRef.current || !editor) return null;
+  async function performSave(
+    targetLocalizationID: string,
+    values: Pick<Draft, "title" | "summary" | "body" | "metadata">,
+  ) {
+    if (localizationRef.current !== targetLocalizationID || !draftRef.current)
+      return null;
     setStatus("正在保存");
     try {
-      const next = await api.saveDraft(workspace, localization.id, {
-        ...draftRef.current,
-        title: titleRef.current,
-        summary: summaryRef.current,
-        body: editor.getJSON(),
+      const next = await api.saveDraft(workspace, targetLocalizationID, {
+        version: draftRef.current.version,
+        ...values,
       });
+      if (localizationRef.current !== targetLocalizationID) return null;
       setDraft(next);
       draftRef.current = next;
       setStatus("已保存");
       return next;
-    } catch {
-      setStatus("保存冲突，请刷新");
+    } catch (err) {
+      setStatus(
+        err instanceof Error ? `保存失败：${err.message}` : "保存失败，请重试",
+      );
       return null;
     }
   }
+  function save() {
+    if (!draftRef.current || !editor) return Promise.resolve(null);
+    const targetLocalizationID = localization.id;
+    const values = {
+      title: titleRef.current,
+      summary: summaryRef.current,
+      body: editor.getJSON(),
+      metadata: draftRef.current.metadata,
+    };
+    saveQueue.current = saveQueue.current.then(() =>
+      performSave(targetLocalizationID, values),
+    );
+    return saveQueue.current;
+  }
   async function publish() {
     setBusy(true);
+    if (timer.current) clearTimeout(timer.current);
     try {
       const saved = await save();
       if (!saved) return;
@@ -83,6 +115,12 @@ export function EditorPanel({
       await api.ready(workspace, localization.id);
       await api.publish(workspace, content.id, localization.locale);
       setStatus("已进入发布队列");
+      const published = await waitUntilPublished();
+      setStatus(
+        published
+          ? "发布成功"
+          : "已排队；若长时间未发布，请确认 Worker 已启动",
+      );
       onChanged();
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "发布失败");
@@ -90,6 +128,27 @@ export function EditorPanel({
       setBusy(false);
     }
   }
+  async function waitUntilPublished() {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const latest = await api.content(workspace, content.id);
+      const current = latest.localizations.find(
+        (item) => item.id === localization.id,
+      );
+      if (current?.state === "published") return true;
+    }
+    return false;
+  }
+  if (!draft && loadError)
+    return (
+      <section className="editor-panel welcome-panel" role="alert">
+        <h2>草稿加载失败</h2>
+        <p>{loadError}</p>
+        <button className="secondary" onClick={() => setReloadToken((v) => v + 1)}>
+          重新加载
+        </button>
+      </section>
+    );
   if (!draft)
     return <section className="editor-panel skeleton" aria-busy="true" />;
   return (
@@ -114,9 +173,9 @@ export function EditorPanel({
           <span className="save-state" aria-live="polite">
             {status}
           </span>
-          <button className="secondary" onClick={() => void save()}>
+          <button className="secondary" disabled={busy} onClick={() => void save()}>
             <Save aria-hidden size={17} />
-            保存版本
+            保存草稿
           </button>
           <button className="primary compact" disabled={busy} onClick={publish}>
             <Send aria-hidden size={17} />

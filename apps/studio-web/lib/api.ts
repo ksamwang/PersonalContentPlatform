@@ -34,6 +34,10 @@ export type Draft = {
   body: Record<string, unknown>;
   metadata: Record<string, unknown>;
 };
+export type SaveDraftInput = Pick<
+  Draft,
+  "version" | "title" | "summary" | "body" | "metadata"
+>;
 export type Asset = {
   id: string;
   filename: string;
@@ -90,6 +94,8 @@ export const api = {
   logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
   list: (ws: string) =>
     requestItems<Content>(`/v1/workspaces/${ws}/contents`),
+  content: (ws: string, id: string) =>
+    request<Content>(`/v1/workspaces/${ws}/contents/${id}`),
   search: (ws: string, q: string) =>
     requestItems<Content>(
       `/v1/workspaces/${ws}/search?q=${encodeURIComponent(q)}`,
@@ -101,10 +107,16 @@ export const api = {
     }),
   draft: (ws: string, id: string) =>
     request<Draft>(`/v1/workspaces/${ws}/localizations/${id}/draft`),
-  saveDraft: (ws: string, id: string, input: Draft) =>
+  saveDraft: (ws: string, id: string, input: SaveDraftInput) =>
     request<Draft>(`/v1/workspaces/${ws}/localizations/${id}/draft`, {
       method: "PUT",
-      body: JSON.stringify(input),
+      body: JSON.stringify({
+        version: input.version,
+        title: input.title,
+        summary: input.summary,
+        body: input.body,
+        metadata: input.metadata,
+      }),
     }),
   seal: (ws: string, id: string, version: number) =>
     request<Revision>(`/v1/workspaces/${ws}/localizations/${id}/revisions`, {

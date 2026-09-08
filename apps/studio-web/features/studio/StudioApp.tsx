@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { api, Content, Principal } from "../../lib/api";
 import { AuthPanel } from "../auth/AuthPanel";
@@ -13,16 +13,23 @@ export function StudioApp() {
   const [user, setUser] = useState<Principal | null | undefined>(undefined),
     [items, setItems] = useState<Content[]>([]),
     [selected, setSelected] = useState<Content>(),
-    [query, setQuery] = useState("");
+    [query, setQuery] = useState(""),
+    [loadError, setLoadError] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const load = useCallback(
     async (p = user, q = query) => {
       if (!p) return;
-      const result = q
-        ? await api.search(p.WorkspaceID, q)
-        : await api.list(p.WorkspaceID);
-      setItems(result.items);
-      if (selected) {
-        setSelected(result.items.find((i) => i.id === selected.id) ?? selected);
+      try {
+        const result = q
+          ? await api.search(p.WorkspaceID, q)
+          : await api.list(p.WorkspaceID);
+        setItems(result.items);
+        setLoadError("");
+        if (selected) {
+          setSelected(result.items.find((i) => i.id === selected.id) ?? selected);
+        }
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : "内容加载失败");
       }
     },
     [user, query, selected],
@@ -48,7 +55,7 @@ export function StudioApp() {
   if (!user) return <AuthPanel onAuthenticated={setUser} />;
   return (
     <div className="studio">
-      <Sidebar />
+      <Sidebar onSearch={() => searchRef.current?.focus()} />
       <main id="main" className="workspace">
         <header className="topbar">
           <div>
@@ -60,6 +67,7 @@ export function StudioApp() {
               <Search aria-hidden size={18} />
               <span className="sr-only">搜索内容</span>
               <input
+                ref={searchRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="搜索内容…"
@@ -84,8 +92,15 @@ export function StudioApp() {
                 退出登录
               </button>
             </div>
+            {loadError && (
+              <div className="inline-error" role="alert">
+                <span>{loadError}</span>
+                <button onClick={() => void load(user, query)}>重试</button>
+              </div>
+            )}
             <ContentList
               items={items}
+              searching={Boolean(query)}
               selected={selected?.id}
               onSelect={setSelected}
             />
