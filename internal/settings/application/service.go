@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	openai "github.com/ksamwang/PersonalContentPlatform/internal/ai/infrastructure/openai"
+	aiports "github.com/ksamwang/PersonalContentPlatform/internal/ai/ports"
+	"github.com/ksamwang/PersonalContentPlatform/internal/asset/infrastructure/storagefactory"
 	"github.com/ksamwang/PersonalContentPlatform/internal/settings/domain"
 	"github.com/ksamwang/PersonalContentPlatform/internal/settings/ports"
 )
@@ -142,4 +145,32 @@ func (s *Service) SaveAI(ctx context.Context, ws, actor uuid.UUID, v domain.AICo
 	}
 	sort.Strings(keys)
 	return s.repo.SaveAI(ctx, ws, actor, v)
+}
+
+func (s *Service) TestStorage(ctx context.Context, ws uuid.UUID) error {
+	profile, err := s.repo.ActiveStorage(ctx, ws)
+	if err != nil {
+		return fmt.Errorf("storage is not configured")
+	}
+	storage, err := storagefactory.NewProfile(ctx, *profile)
+	if err != nil {
+		return err
+	}
+	checker, ok := storage.(interface{ Check(context.Context) error })
+	if !ok {
+		return fmt.Errorf("storage connection test is unavailable")
+	}
+	return checker.Check(ctx)
+}
+
+func (s *Service) TestAI(ctx context.Context, ws uuid.UUID) error {
+	config, err := s.repo.AI(ctx, ws)
+	if err != nil {
+		return err
+	}
+	if config.BaseURL == "" || config.APIKey == "" || config.Model == "" {
+		return fmt.Errorf("AI provider configuration is incomplete")
+	}
+	_, err = openai.New(config.BaseURL, config.APIKey, config.Model).Generate(ctx, aiports.Request{System: "Reply with OK only.", User: "Connection test", Model: config.Model})
+	return err
 }

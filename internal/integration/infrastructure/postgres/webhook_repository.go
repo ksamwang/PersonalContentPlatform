@@ -11,16 +11,16 @@ import (
 
 func (r *Repository) CreateWebhook(ctx context.Context, workspaceID uuid.UUID, endpoint domain.WebhookEndpoint) (domain.WebhookEndpoint, error) {
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO webhook_endpoints(id,workspace_id,name,url,secret_ref,enabled,event_types)
-		VALUES($1,$2,$3,$4,$5,$6,$7)
+		INSERT INTO webhook_endpoints(id,workspace_id,name,url,secret_ref,secret_value,enabled,event_types)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8)
 		RETURNING created_at,updated_at`,
-		endpoint.ID, workspaceID, endpoint.Name, endpoint.URL, endpoint.SecretRef, endpoint.Enabled, endpoint.EventTypes,
+		endpoint.ID, workspaceID, endpoint.Name, endpoint.URL, endpoint.SecretRef, endpoint.SecretValue, endpoint.Enabled, endpoint.EventTypes,
 	).Scan(&endpoint.CreatedAt, &endpoint.UpdatedAt)
 	return endpoint, err
 }
 
 func (r *Repository) ListWebhooks(ctx context.Context, workspaceID uuid.UUID) ([]domain.WebhookEndpoint, error) {
-	rows, err := r.db.Query(ctx, `SELECT id,name,url,secret_ref,enabled,event_types,created_at,updated_at FROM webhook_endpoints WHERE workspace_id=$1 ORDER BY created_at`, workspaceID)
+	rows, err := r.db.Query(ctx, `SELECT id,name,url,secret_ref,(secret_value<>'' OR secret_ref<>''),enabled,event_types,created_at,updated_at FROM webhook_endpoints WHERE workspace_id=$1 ORDER BY created_at`, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (r *Repository) ListWebhooks(ctx context.Context, workspaceID uuid.UUID) ([
 	items := []domain.WebhookEndpoint{}
 	for rows.Next() {
 		var endpoint domain.WebhookEndpoint
-		if err = rows.Scan(&endpoint.ID, &endpoint.Name, &endpoint.URL, &endpoint.SecretRef, &endpoint.Enabled, &endpoint.EventTypes, &endpoint.CreatedAt, &endpoint.UpdatedAt); err != nil {
+		if err = rows.Scan(&endpoint.ID, &endpoint.Name, &endpoint.URL, &endpoint.SecretRef, &endpoint.SecretSet, &endpoint.Enabled, &endpoint.EventTypes, &endpoint.CreatedAt, &endpoint.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, endpoint)
@@ -61,7 +61,7 @@ func (r *Repository) ClaimWebhookDelivery(ctx context.Context, maxAttempts int) 
 
 	var delivery domain.WebhookDelivery
 	err = tx.QueryRow(ctx, `
-		SELECT e.id,o.id,o.type,e.url,e.secret_ref,o.payload,o.created_at,COALESCE(a.attempt_count,0)+1
+		SELECT e.id,o.id,o.type,e.url,e.secret_ref,e.secret_value,o.payload,o.created_at,COALESCE(a.attempt_count,0)+1
 		FROM outbox_events o
 		JOIN webhook_endpoints e ON e.workspace_id=o.workspace_id
 		LEFT JOIN LATERAL (
@@ -85,6 +85,7 @@ func (r *Repository) ClaimWebhookDelivery(ctx context.Context, maxAttempts int) 
 		&delivery.EventType,
 		&delivery.URL,
 		&delivery.SecretRef,
+		&delivery.SecretValue,
 		&delivery.Payload,
 		&delivery.CreatedAt,
 		&delivery.AttemptNo,

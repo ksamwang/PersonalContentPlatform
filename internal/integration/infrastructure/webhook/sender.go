@@ -37,7 +37,10 @@ func NewSender() *Sender {
 }
 
 func (s *Sender) Send(ctx context.Context, delivery domain.WebhookDelivery) domain.DeliveryResult {
-	secret, ok := s.resolveSecret(delivery.SecretRef)
+	secret, ok := delivery.SecretValue, delivery.SecretValue != ""
+	if !ok && delivery.SecretRef != "" {
+		secret, ok = s.resolveSecret(delivery.SecretRef)
+	}
 	if !ok || secret == "" {
 		return failed(fmt.Sprintf("secret environment variable %q is not configured", delivery.SecretRef), nil)
 	}

@@ -11,11 +11,15 @@ import (
 )
 
 type Service struct {
-	db       *pgxpool.Pool
-	provider ports.Provider
+	db        *pgxpool.Pool
+	providers ProviderResolver
 }
 
-func New(db *pgxpool.Pool, p ports.Provider) *Service { return &Service{db: db, provider: p} }
+type ProviderResolver interface {
+	Resolve(context.Context, uuid.UUID) (ports.Provider, string, error)
+}
+
+func New(db *pgxpool.Pool, p ProviderResolver) *Service { return &Service{db: db, providers: p} }
 func (s *Service) Suggest(ctx context.Context, ws, user, target uuid.UUID, purpose, input string) (uuid.UUID, error) {
 	prompts := map[string]string{"summary": "Summarize the content concisely. Return plain text only.", "tags": "Suggest up to five precise tags as a JSON array.", "translation": "Translate faithfully while preserving structure. Return only the translation."}
 	system, ok := prompts[purpose]
@@ -23,11 +27,15 @@ func (s *Service) Suggest(ctx context.Context, ws, user, target uuid.UUID, purpo
 		return uuid.Nil, fmt.Errorf("unsupported AI purpose")
 	}
 	runID := id.New()
-	refs, _ := json.Marshal(map[string]any{"target_object_id": target})
-	if _, err := s.db.Exec(ctx, `INSERT INTO ai_runs(id,workspace_id,purpose,provider,model,input_refs,status,created_by) VALUES($1,$2,$3,$4,'configured',$5,'running',$6)`, runID, ws, purpose, s.provider.Name(), refs, user); err != nil {
+	provider, model, err := s.providers.Resolve(ctx, ws)
+	if err != nil {
 		return uuid.Nil, err
 	}
-	result, err := s.provider.Generate(ctx, ports.Request{System: system, User: input})
+	refs, _ := json.Marshal(map[string]any{"target_object_id": target})
+	if _, err := s.db.Exec(ctx, `INSERT INTO ai_runs(id,workspace_id,purpose,provider,model,input_refs,status,created_by) VALUES($1,$2,$3,$4,$5,$6,'running',$7)`, runID, ws, purpose, provider.Name(), model, refs, user); err != nil {
+		return uuid.Nil, err
+	}
+	result, err := provider.Generate(ctx, ports.Request{System: system, User: input, Model: model})
 	if err != nil {
 		_, _ = s.db.Exec(ctx, `UPDATE ai_runs SET status='failed',error_code='provider_error',completed_at=now() WHERE id=$1`, runID)
 		return uuid.Nil, err

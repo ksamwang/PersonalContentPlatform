@@ -42,3 +42,7 @@ func (s *Storage) Stat(_ context.Context, key string) (ports.ObjectInfo, error) 
 func (s *Storage) PresignPut(_ context.Context, key, mime string, ttl time.Duration) (string, error) {
 	return s.bucket.SignURL(key, oss.HTTPPut, int64(ttl.Seconds()), oss.ContentType(mime))
 }
+func (s *Storage) Check(_ context.Context) error {
+	_, err := s.bucket.ListObjects(oss.MaxKeys(1))
+	return err
+}

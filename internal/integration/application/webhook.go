@@ -21,24 +21,27 @@ func NewWebhookService(repository ports.Repository) *WebhookService {
 	return &WebhookService{repository: repository}
 }
 
-func (s *WebhookService) Create(ctx context.Context, workspaceID uuid.UUID, name, endpointURL, secretRef string, eventTypes []string) (domain.WebhookEndpoint, error) {
+func (s *WebhookService) Create(ctx context.Context, workspaceID uuid.UUID, name, endpointURL, secretRef, secretValue string, eventTypes []string) (domain.WebhookEndpoint, error) {
 	name = strings.TrimSpace(name)
 	secretRef = strings.TrimSpace(secretRef)
 	parsedURL, err := url.ParseRequestURI(strings.TrimSpace(endpointURL))
 	if err != nil || parsedURL.Host == "" || (parsedURL.Scheme != "https" && parsedURL.Scheme != "http") {
 		return domain.WebhookEndpoint{}, fmt.Errorf("webhook URL must be an absolute HTTP or HTTPS URL")
 	}
-	if name == "" || secretRef == "" {
-		return domain.WebhookEndpoint{}, fmt.Errorf("name and secret_ref are required")
+	secretValue = strings.TrimSpace(secretValue)
+	if name == "" || (secretRef == "" && secretValue == "") {
+		return domain.WebhookEndpoint{}, fmt.Errorf("name and secret are required")
 	}
 	eventTypes = normalizeEventTypes(eventTypes)
 	return s.repository.CreateWebhook(ctx, workspaceID, domain.WebhookEndpoint{
-		ID:         id.New(),
-		Name:       name,
-		URL:        parsedURL.String(),
-		SecretRef:  secretRef,
-		Enabled:    true,
-		EventTypes: eventTypes,
+		ID:          id.New(),
+		Name:        name,
+		URL:         parsedURL.String(),
+		SecretRef:   secretRef,
+		SecretValue: secretValue,
+		SecretSet:   secretValue != "" || secretRef != "",
+		Enabled:     true,
+		EventTypes:  eventTypes,
 	})
 }
 

@@ -27,7 +27,32 @@ func (h *HTTP) Register(r chi.Router) {
 		r.Put("/v1/workspaces/{workspaceID}/settings/{section}", h.updateSection)
 		r.Put("/v1/workspaces/{workspaceID}/settings/storage", h.saveStorage)
 		r.Put("/v1/workspaces/{workspaceID}/settings/ai", h.saveAI)
+		r.Post("/v1/workspaces/{workspaceID}/settings/storage:test", h.testStorage)
+		r.Post("/v1/workspaces/{workspaceID}/settings/ai:test", h.testAI)
 	})
+}
+
+func (h *HTTP) testStorage(w http.ResponseWriter, r *http.Request) {
+	if !owner(w, r) {
+		return
+	}
+	ws, _, _ := principal(r)
+	if err := h.service.TestStorage(r.Context(), ws); err != nil {
+		httpx.Error(w, 422, "storage_connection_failed", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, map[string]bool{"ok": true})
+}
+func (h *HTTP) testAI(w http.ResponseWriter, r *http.Request) {
+	if !owner(w, r) {
+		return
+	}
+	ws, _, _ := principal(r)
+	if err := h.service.TestAI(r.Context(), ws); err != nil {
+		httpx.Error(w, 422, "ai_connection_failed", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, map[string]bool{"ok": true})
 }
 func (h *HTTP) scope(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

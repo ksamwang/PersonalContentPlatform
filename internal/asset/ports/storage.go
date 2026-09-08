@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"io"
 	"time"
 )
@@ -15,4 +16,8 @@ type Storage interface {
 	Open(context.Context, string) (io.ReadCloser, error)
 	Stat(context.Context, string) (ObjectInfo, error)
 	PresignPut(context.Context, string, string, time.Duration) (string, error)
+}
+
+type StorageResolver interface {
+	Resolve(context.Context, uuid.UUID, *uuid.UUID) (Storage, *uuid.UUID, error)
 }

@@ -56,15 +56,16 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 	}
 	identityTransport := identityhttp.NewHTTP(sessions, passkeys, cfg.SessionCookieName, cfg.SessionTTL, cfg.Environment != "development")
 	contentService := contentapp.New(contentpg.New(db), cfg.SupportedLocales)
-	storage, err := storagefactory.New(context.Background(), cfg)
+	fallbackStorage, err := storagefactory.New(context.Background(), cfg)
 	if err != nil {
 		return nil, err
 	}
+	settingsRepository := settingspg.New(db)
+	storage := storagefactory.NewResolver(settingsRepository, fallbackStorage)
 	assetService := assetapp.New(assetpg.New(db), storage)
 	knowledgeService := knowledgeapp.New(knowledgepg.New(db))
-	aiService := aiapp.New(db, openai.New(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
+	aiService := aiapp.New(db, openai.NewResolver(settingsRepository, openai.New(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)))
 	integrationRepository := integrationpg.New(db)
-	settingsRepository := settingspg.New(db)
 	return &App{
 		DB:          db,
 		StartedAt:   time.Now().UTC(),

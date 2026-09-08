@@ -55,3 +55,7 @@ func (s *Storage) PresignPut(ctx context.Context, key, mime string, ttl time.Dur
 	}
 	return out.URL, nil
 }
+func (s *Storage) Check(ctx context.Context) error {
+	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: &s.bucket})
+	return err
+}

@@ -20,10 +20,10 @@ const MaxUploadSize int64 = 100 << 20
 
 type Service struct {
 	repo    ports.Repository
-	storage ports.Storage
+	storage ports.StorageResolver
 }
 
-func New(repo ports.Repository, storage ports.Storage) *Service {
+func New(repo ports.Repository, storage ports.StorageResolver) *Service {
 	return &Service{repo: repo, storage: storage}
 }
 func (s *Service) Prepare(ctx context.Context, workspaceID, userID uuid.UUID, filename, mimeType string, size int64) (domain.UploadPlan, error) {
@@ -38,10 +38,15 @@ func (s *Service) Prepare(ctx context.Context, workspaceID, userID uuid.UUID, fi
 		mimeType = "application/octet-stream"
 	}
 	intent := domain.UploadIntent{ID: id.New(), WorkspaceID: workspaceID, StorageKey: fmt.Sprintf("original/%s/%s", workspaceID, id.New()), Filename: filename, MIME: mimeType, ExpectedSize: size, ExpiresAt: time.Now().Add(15 * time.Minute)}
+	storage, profileID, err := s.storage.Resolve(ctx, workspaceID, nil)
+	if err != nil {
+		return domain.UploadPlan{}, err
+	}
+	intent.StorageProfileID = profileID
 	if err := s.repo.CreateIntent(ctx, intent, userID); err != nil {
 		return domain.UploadPlan{}, err
 	}
-	url, err := s.storage.PresignPut(ctx, intent.StorageKey, mimeType, 15*time.Minute)
+	url, err := storage.PresignPut(ctx, intent.StorageKey, mimeType, 15*time.Minute)
 	if err != nil {
 		return domain.UploadPlan{}, err
 	}
@@ -58,21 +63,29 @@ func (s *Service) Upload(ctx context.Context, workspaceID, intentID uuid.UUID, b
 	if size != intent.ExpectedSize {
 		return fmt.Errorf("upload size does not match intent")
 	}
-	return s.storage.Put(ctx, intent.StorageKey, body, size, intent.MIME)
+	storage, _, err := s.storage.Resolve(ctx, workspaceID, intent.StorageProfileID)
+	if err != nil {
+		return err
+	}
+	return storage.Put(ctx, intent.StorageKey, body, size, intent.MIME)
 }
 func (s *Service) Complete(ctx context.Context, workspaceID, userID, intentID uuid.UUID) (domain.Asset, error) {
 	intent, err := s.repo.Intent(ctx, workspaceID, intentID)
 	if err != nil {
 		return domain.Asset{}, err
 	}
-	info, err := s.storage.Stat(ctx, intent.StorageKey)
+	storage, _, err := s.storage.Resolve(ctx, workspaceID, intent.StorageProfileID)
+	if err != nil {
+		return domain.Asset{}, err
+	}
+	info, err := storage.Stat(ctx, intent.StorageKey)
 	if err != nil {
 		return domain.Asset{}, err
 	}
 	if info.Size != intent.ExpectedSize {
 		return domain.Asset{}, fmt.Errorf("stored object size mismatch")
 	}
-	reader, err := s.storage.Open(ctx, intent.StorageKey)
+	reader, err := storage.Open(ctx, intent.StorageKey)
 	if err != nil {
 		return domain.Asset{}, err
 	}

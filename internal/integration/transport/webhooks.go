@@ -12,6 +12,7 @@ type createWebhookInput struct {
 	Name       string   `json:"name"`
 	URL        string   `json:"url"`
 	SecretRef  string   `json:"secret_ref"`
+	Secret     string   `json:"secret"`
 	EventTypes []string `json:"event_types"`
 }
 
@@ -21,7 +22,7 @@ func (h *HTTP) createWebhook(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	endpoint, err := h.webhooks.Create(r.Context(), principal(r).WorkspaceID, input.Name, input.URL, input.SecretRef, input.EventTypes)
+	endpoint, err := h.webhooks.Create(r.Context(), principal(r).WorkspaceID, input.Name, input.URL, input.SecretRef, input.Secret, input.EventTypes)
 	if err != nil {
 		httpx.Error(w, http.StatusUnprocessableEntity, "webhook_invalid", err.Error())
 		return

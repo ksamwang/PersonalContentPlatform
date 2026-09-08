@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/ksamwang/PersonalContentPlatform/internal/ai/ports"
+	settingsports "github.com/ksamwang/PersonalContentPlatform/internal/settings/ports"
 	"net/http"
 	"time"
 )
@@ -23,7 +25,11 @@ func (p *Provider) Generate(ctx context.Context, in ports.Request) (ports.Respon
 	if p.baseURL == "" || p.key == "" || p.model == "" {
 		return ports.Response{}, fmt.Errorf("AI provider is not configured")
 	}
-	body, _ := json.Marshal(map[string]any{"model": p.model, "messages": []map[string]string{{"role": "system", "content": in.System}, {"role": "user", "content": in.User}}, "temperature": 0.2})
+	model := p.model
+	if in.Model != "" {
+		model = in.Model
+	}
+	body, _ := json.Marshal(map[string]any{"model": model, "messages": []map[string]string{{"role": "system", "content": in.System}, {"role": "user", "content": in.User}}, "temperature": 0.2})
 	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return ports.Response{}, err
@@ -56,4 +62,29 @@ func (p *Provider) Generate(ctx context.Context, in ports.Request) (ports.Respon
 		return ports.Response{}, fmt.Errorf("provider returned no choices")
 	}
 	return ports.Response{Text: out.Choices[0].Message.Content, InputTokens: out.Usage.Prompt, OutputTokens: out.Usage.Completion}, nil
+}
+
+type Resolver struct {
+	repository settingsports.Repository
+	fallback   *Provider
+}
+
+func NewResolver(repository settingsports.Repository, fallback *Provider) *Resolver {
+	return &Resolver{repository: repository, fallback: fallback}
+}
+func (r *Resolver) Resolve(ctx context.Context, ws uuid.UUID) (ports.Provider, string, error) {
+	cfg, err := r.repository.AI(ctx, ws)
+	if err != nil {
+		return nil, "", err
+	}
+	if cfg.BaseURL == "" && cfg.APIKey == "" && cfg.Model == "" {
+		if r.fallback.baseURL == "" || r.fallback.key == "" || r.fallback.model == "" {
+			return nil, "", fmt.Errorf("AI provider is not configured")
+		}
+		return r.fallback, r.fallback.model, nil
+	}
+	if cfg.BaseURL == "" || cfg.APIKey == "" || cfg.Model == "" {
+		return nil, "", fmt.Errorf("AI provider configuration is incomplete")
+	}
+	return New(cfg.BaseURL, cfg.APIKey, cfg.Model), cfg.Model, nil
 }

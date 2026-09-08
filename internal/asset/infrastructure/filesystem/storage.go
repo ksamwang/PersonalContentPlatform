@@ -76,3 +76,14 @@ func (s *Storage) Stat(_ context.Context, key string) (ports.ObjectInfo, error) 
 func (s *Storage) PresignPut(context.Context, string, string, time.Duration) (string, error) {
 	return "", nil
 }
+func (s *Storage) Check(context.Context) error {
+	file, err := os.CreateTemp(s.root, ".pcp-check-*")
+	if err != nil {
+		return err
+	}
+	name := file.Name()
+	if err = file.Close(); err != nil {
+		return err
+	}
+	return os.Remove(name)
+}
