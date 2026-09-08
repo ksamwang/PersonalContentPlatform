@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Languages, Rss } from "lucide-react";
-export function SiteHeader({ locale }: { locale: string }) {
+export function SiteHeader({ locale, name="Field Notes", rss=true }: { locale: string; name?:string; rss?:boolean }) {
   const other = locale === "zh" ? "en" : "zh";
   return (
     <header className="site-header">
       <Link className="wordmark" href={`/${locale}`}>
-        FIELD NOTES<span>.</span>
+        {name.toUpperCase()}<span>.</span>
       </Link>
       <nav aria-label={locale === "zh" ? "主要导航" : "Primary navigation"}>
         <Link href={`/${locale}`}>{locale === "zh" ? "最新" : "Latest"}</Link>
@@ -19,9 +19,9 @@ export function SiteHeader({ locale }: { locale: string }) {
         >
           <Languages aria-hidden />
         </Link>
-        <a className="icon-link" href={`/api/rss/${locale}`} aria-label="RSS">
+        {rss && <a className="icon-link" href={`/api/rss/${locale}`} aria-label="RSS">
           <Rss aria-hidden />
-        </a>
+        </a>}
       </nav>
     </header>
   );

@@ -3,6 +3,7 @@ package domain
 import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
+	"time"
 )
 
 type User struct {
@@ -19,4 +20,8 @@ func (u User) WebAuthnCredentials() []webauthn.Credential { return u.Credentials
 type Principal struct {
 	UserID, WorkspaceID      uuid.UUID
 	Email, DisplayName, Role string
+}
+type AuthPolicy struct {
+	PasswordLoginEnabled, PasskeyEnabled bool
+	SessionTTL                           time.Duration
 }

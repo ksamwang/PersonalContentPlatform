@@ -14,6 +14,7 @@ type Repository interface {
 	CreateOwner(context.Context, domain.User, string, string) (domain.Principal, error)
 	UserByEmail(context.Context, string) (domain.User, error)
 	UserByID(context.Context, uuid.UUID) (domain.User, error)
+	AuthPolicyByUser(context.Context, uuid.UUID, time.Duration) (domain.AuthPolicy, error)
 	CreateSession(context.Context, uuid.UUID, []byte, time.Time, string) error
 	PrincipalBySessionHash(context.Context, []byte) (domain.Principal, error)
 	DeleteSession(context.Context, []byte) error

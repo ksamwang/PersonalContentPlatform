@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { SiteHeader } from "../../components/SiteHeader";
-import { listPages } from "../../lib/content";
+import { getPublicSettings, listPages } from "../../lib/content";
 
 export default async function Home({
   params,
@@ -10,10 +10,10 @@ export default async function Home({
 }) {
   const { locale } = await params;
   const zh = locale === "zh";
-  const items = await listPages(zh ? "zh-CN" : "en");
+  const [items,settings] = await Promise.all([listPages(zh ? "zh-CN" : "en"),getPublicSettings()]);
   return (
     <>
-      <SiteHeader locale={locale} />
+      <SiteHeader locale={locale} name={settings.site.name} rss={settings.site.rss_enabled} />
       <main id="content">
         <section className="hero">
           <span className="kicker">
@@ -37,9 +37,9 @@ export default async function Home({
             )}
           </h1>
           <p>
-            {zh
+            {settings.site.description || (zh
               ? "这里收录关于创作、技术与生活实践的文章和笔记。内容会被更新、连接，也会在时间里重新出现。"
-              : "Essays and notes on making, technology, and lived practice—revised, connected, and rediscovered over time."}
+              : "Essays and notes on making, technology, and lived practice—revised, connected, and rediscovered over time.")}
           </p>
         </section>
         <section className="index">
@@ -77,8 +77,8 @@ export default async function Home({
         </section>
       </main>
       <footer>
-        <span>Field Notes</span>
-        <span>Capture · Connect · Publish</span>
+        <span>{settings.site.name}</span>
+        <span>{settings.site.footer}</span>
       </footer>
     </>
   );

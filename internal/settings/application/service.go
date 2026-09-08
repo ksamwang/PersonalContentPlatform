@@ -36,6 +36,9 @@ func (s *Service) Get(ctx context.Context, ws uuid.UUID, canEdit bool) (domain.S
 	}
 	return domain.Settings{General: general, Storage: storage, AI: ai, CanEdit: canEdit}, nil
 }
+func (s *Service) Public(ctx context.Context, slug string) (domain.GeneralSettings, error) {
+	return s.repo.GetBySlug(ctx, slug)
+}
 
 func (s *Service) UpdateGeneral(ctx context.Context, ws, actor uuid.UUID, section string, raw json.RawMessage) (domain.GeneralSettings, error) {
 	if err := validateSection(section, raw); err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ksamwang/PersonalContentPlatform/internal/content/domain"
 	"github.com/ksamwang/PersonalContentPlatform/internal/content/ports"
+	settingsports "github.com/ksamwang/PersonalContentPlatform/internal/settings/ports"
 	"regexp"
 	"strings"
 )
@@ -18,20 +19,30 @@ var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 type Service struct {
 	repo      ports.Repository
 	supported map[string]bool
+	settings  settingsports.Repository
 }
 
-func New(repo ports.Repository, locales []string) *Service {
+func New(repo ports.Repository, locales []string, settings settingsports.Repository) *Service {
 	supported := map[string]bool{}
 	for _, v := range locales {
 		supported[v] = true
 	}
-	return &Service{repo: repo, supported: supported}
+	return &Service{repo: repo, supported: supported, settings: settings}
 }
 func (s *Service) Create(ctx context.Context, workspaceID, userID uuid.UUID, kind domain.Type, locale, slug, title string) (domain.Content, error) {
 	if !kind.Valid() {
 		return domain.Content{}, fmt.Errorf("unsupported content type")
 	}
-	if !s.supported[locale] {
+	supported := s.supported
+	if s.settings != nil {
+		if configured, err := s.settings.Get(ctx, workspaceID); err == nil {
+			supported = map[string]bool{}
+			for _, item := range configured.Workspace.SupportedLocales {
+				supported[item] = true
+			}
+		}
+	}
+	if !supported[locale] {
 		return domain.Content{}, fmt.Errorf("unsupported locale")
 	}
 	slug = strings.ToLower(strings.TrimSpace(slug))

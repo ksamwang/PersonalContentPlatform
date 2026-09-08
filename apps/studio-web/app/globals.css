@@ -322,6 +322,41 @@ select:focus-visible,
   font-weight: 700;
   text-decoration: underline;
 }
+.settings-page {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding-bottom: 56px;
+}
+.settings-heading { margin-bottom: 28px; }
+.settings-heading h1 { margin: 5px 0 8px; font-size: clamp(2rem, 4vw, 3.25rem); }
+.settings-heading p { margin: 0; color: var(--muted); }
+.settings-card {
+  margin-bottom: 20px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 96%, white);
+}
+.settings-card > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 20px; }
+.settings-card h2 { margin: 0 0 6px; font-size: 1.15rem; }
+.settings-card header p { margin: 0; color: var(--muted); }
+.settings-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.settings-field { display: grid; gap: 7px; font-weight: 650; }
+.settings-field input,.settings-field select,.settings-field textarea { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); padding: 10px 12px; font: inherit; font-weight: 400; }
+.settings-field textarea { min-height: 96px; resize: vertical; }
+.settings-field small { color: var(--muted); font-weight: 400; line-height: 1.45; }
+.settings-field input:disabled,.settings-field select:disabled,.settings-field textarea:disabled { opacity: .72; cursor: not-allowed; }
+.settings-check { min-height: 44px; display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.settings-check input { width: 18px; height: 18px; }
+.settings-test { min-height: 44px; justify-self: start; }
+.settings-status { min-height: 22px; margin-top: 14px; color: var(--muted); }
+.settings-status.saved { color: #157347; }
+.settings-status.error { color: #a32118; }
+@media (max-width: 760px) {
+  .settings-fields { grid-template-columns: 1fr; }
+  .settings-card > header { flex-direction: column; }
+  .settings-card > header button { width: 100%; }
+}
 .workspace {
   min-width: 0;
   padding: 32px;

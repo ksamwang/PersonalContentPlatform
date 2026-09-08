@@ -47,6 +47,15 @@ export type Asset = {
   size: number;
   sha256: string;
 };
+export type GeneralSettings = {
+  workspace: { name: string; slug: string; default_locale: string; supported_locales: string[]; timezone: string };
+  site: { name: string; public_url: string; description: string; about: string; footer: string; rss_enabled: boolean };
+  auth: { password_login_enabled: boolean; passkey_enabled: boolean; session_ttl_hours: number };
+  publication: { default_channel: string; auto_publish: boolean };
+};
+export type StorageSettings = { id?: string; name: string; provider: "filesystem"|"s3"|"r2"|"oss"; endpoint: string; region: string; bucket: string; access_key_mask?: string; secret_key_set?: boolean; base_path: string; active?: boolean };
+export type AISettings = { provider: string; base_url: string; api_key_mask?: string; api_key_set?: boolean; model: string; purpose_models: Record<string,string> };
+export type WorkspaceSettings = { general: GeneralSettings; storage: StorageSettings|null; ai: AISettings; can_edit: boolean };
 export class APIError extends Error {
   constructor(
     public status: number,
@@ -162,4 +171,10 @@ export const api = {
       body: JSON.stringify({ upload_id: plan.upload_id }),
     });
   },
+  settings: (ws: string) => request<WorkspaceSettings>(`/v1/workspaces/${ws}/settings`),
+  saveSettings: <K extends keyof GeneralSettings>(ws: string, section: K, value: GeneralSettings[K]) => request<GeneralSettings>(`/v1/workspaces/${ws}/settings/${section}`, { method: "PUT", body: JSON.stringify(value) }),
+  saveStorage: (ws: string, value: StorageSettings & { access_key?: string; secret_key?: string }) => request<StorageSettings>(`/v1/workspaces/${ws}/settings/storage`, { method: "PUT", body: JSON.stringify(value) }),
+  testStorage: (ws: string) => request<{ok:boolean}>(`/v1/workspaces/${ws}/settings/storage:test`, { method: "POST" }),
+  saveAI: (ws: string, value: AISettings & { api_key?: string }) => request<AISettings>(`/v1/workspaces/${ws}/settings/ai`, { method: "PUT", body: JSON.stringify(value) }),
+  testAI: (ws: string) => request<{ok:boolean}>(`/v1/workspaces/${ws}/settings/ai:test`, { method: "POST" }),
 };

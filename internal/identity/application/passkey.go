@@ -26,6 +26,10 @@ func NewPasskeys(repo ports.Repository, rpID string, origins []string) (*Passkey
 	return &Passkeys{repo: repo, web: web}, nil
 }
 func (p *Passkeys) BeginRegistration(ctx context.Context, userID uuid.UUID) (any, uuid.UUID, error) {
+	policy, err := p.repo.AuthPolicyByUser(ctx, userID, 30*24*time.Hour)
+	if err != nil || !policy.PasskeyEnabled {
+		return nil, uuid.Nil, fmt.Errorf("passkey is disabled")
+	}
 	u, err := p.repo.UserByID(ctx, userID)
 	if err != nil {
 		return nil, uuid.Nil, err
@@ -71,6 +75,10 @@ func (p *Passkeys) BeginLogin(ctx context.Context, email string) (any, uuid.UUID
 	if err != nil {
 		return nil, uuid.Nil, ErrUnauthorized
 	}
+	policy, err := p.repo.AuthPolicyByUser(ctx, u.ID, 30*24*time.Hour)
+	if err != nil || !policy.PasskeyEnabled {
+		return nil, uuid.Nil, ErrUnauthorized
+	}
 	options, session, err := p.web.BeginLogin(u)
 	if err != nil {
 		return nil, uuid.Nil, err
@@ -94,6 +102,11 @@ func (p *Passkeys) FinishLogin(ctx context.Context, ceremonyID uuid.UUID, r *htt
 	if err != nil {
 		return domain.Principal{}, "", ErrUnauthorized
 	}
+	policy, err := p.repo.AuthPolicyByUser(ctx, userID, sessionTTL)
+	if err != nil || !policy.PasskeyEnabled {
+		return domain.Principal{}, "", ErrUnauthorized
+	}
+	sessionTTL = policy.SessionTTL
 	var session webauthn.SessionData
 	if err = json.Unmarshal(data, &session); err != nil {
 		return domain.Principal{}, "", err

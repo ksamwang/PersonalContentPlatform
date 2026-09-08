@@ -7,9 +7,7 @@ import {
   Shapes,
 } from "lucide-react";
 
-export function Sidebar({ onSearch }: { onSearch: () => void }) {
-  const publicSite =
-    process.env.NEXT_PUBLIC_PUBLIC_SITE_URL ?? "http://localhost:3000/zh";
+export function Sidebar({ onSearch, onSettings, view, publicSite }: { onSearch: () => void; onSettings: () => void; view: "content"|"settings"; publicSite:string }) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -18,7 +16,7 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
       </div>
       <nav aria-label="主要导航">
         <button
-          className="active"
+          className={view === "content" ? "active" : ""}
           onClick={() => document.querySelector("#main")?.scrollIntoView()}
         >
           <Library aria-hidden size={19} />
@@ -43,10 +41,9 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
           <span>发布站点</span>
         </a>
       </nav>
-      <button className="settings" disabled title="设置界面将在后续版本开放">
+      <button className={`settings ${view === "settings" ? "active" : ""}`} onClick={onSettings}>
         <Settings2 aria-hidden size={19} />
         <span>设置</span>
-        <small>规划中</small>
       </button>
     </aside>
   );

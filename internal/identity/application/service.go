@@ -70,11 +70,15 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent string) 
 	if err != nil || u.Status != "active" || !verifyPassword(u.PasswordHash, password, s.pepper) {
 		return domain.Principal{}, "", ErrUnauthorized
 	}
+	policy, err := s.repo.AuthPolicyByUser(ctx, u.ID, s.sessionTTL)
+	if err != nil || !policy.PasswordLoginEnabled {
+		return domain.Principal{}, "", ErrUnauthorized
+	}
 	token, hash, err := newToken()
 	if err != nil {
 		return domain.Principal{}, "", err
 	}
-	if err = s.repo.CreateSession(ctx, u.ID, hash, time.Now().Add(s.sessionTTL), userAgent); err != nil {
+	if err = s.repo.CreateSession(ctx, u.ID, hash, time.Now().Add(policy.SessionTTL), userAgent); err != nil {
 		return domain.Principal{}, "", err
 	}
 	principal, err := s.repo.PrincipalBySessionHash(ctx, hash)

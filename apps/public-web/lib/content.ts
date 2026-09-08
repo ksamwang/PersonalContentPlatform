@@ -9,6 +9,11 @@ export type PublishedPage = {
 };
 const origin = process.env.API_ORIGIN ?? "http://localhost:8080";
 const workspace = process.env.WORKSPACE_SLUG ?? "personal";
+export type PublicSettings = { workspace:{name:string;default_locale:string;supported_locales:string[]}; site:{name:string;public_url:string;description:string;about:string;footer:string;rss_enabled:boolean} };
+export async function getPublicSettings():Promise<PublicSettings>{
+  const fallback:PublicSettings={workspace:{name:"Personal Workspace",default_locale:"zh-CN",supported_locales:["zh-CN","en"]},site:{name:"Field Notes",public_url:"",description:"",about:"",footer:"Capture · Connect · Publish",rss_enabled:true}};
+  try{const response=await fetch(`${origin}/v1/public/${workspace}/settings`,{cache:"no-store"});return response.ok?await response.json():fallback}catch{return fallback}
+}
 export async function getPage(
   locale: string,
   type: string,

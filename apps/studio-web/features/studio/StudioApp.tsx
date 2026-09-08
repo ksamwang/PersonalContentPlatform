@@ -9,12 +9,15 @@ import { EditorPanel } from "../editor/EditorPanel";
 import { ContentList } from "./ContentList";
 import { CreateContent } from "./CreateContent";
 import { Sidebar } from "./Sidebar";
+import { SettingsPanel } from "../settings/SettingsPanel";
 export function StudioApp() {
   const [user, setUser] = useState<Principal | null | undefined>(undefined),
     [items, setItems] = useState<Content[]>([]),
     [selected, setSelected] = useState<Content>(),
     [query, setQuery] = useState(""),
-    [loadError, setLoadError] = useState("");
+    [loadError, setLoadError] = useState(""),
+    [view, setView] = useState<"content" | "settings">("content"),
+    [publicSite,setPublicSite] = useState("http://localhost:3000/zh");
   const searchRef = useRef<HTMLInputElement>(null);
   const load = useCallback(
     async (p = user, q = query) => {
@@ -42,6 +45,7 @@ export function StudioApp() {
   }, []);
   useEffect(() => {
     if (!user) return;
+    void api.settings(user.WorkspaceID).then(v=>{if(v.general.site.public_url)setPublicSite(v.general.site.public_url)}).catch(()=>{});
     const timer = setTimeout(() => void load(user, query), query ? 300 : 0);
     return () => clearTimeout(timer);
   }, [user, query]);
@@ -55,8 +59,11 @@ export function StudioApp() {
   if (!user) return <AuthPanel onAuthenticated={setUser} />;
   return (
     <div className="studio">
-      <Sidebar onSearch={() => searchRef.current?.focus()} />
+      <Sidebar view={view} publicSite={publicSite} onSearch={() => { setView("content"); setTimeout(() => searchRef.current?.focus(), 0); }} onSettings={() => setView("settings")} />
       <main id="main" className="workspace">
+        {view === "settings" ? (
+          <SettingsPanel workspace={user.WorkspaceID} role={user.Role} />
+        ) : (<>
         <header className="topbar">
           <div>
             <span className="eyebrow">YOUR LIBRARY</span>
@@ -120,6 +127,7 @@ export function StudioApp() {
             </section>
           )}
         </div>
+        </>)}
       </main>
     </div>
   );

@@ -10,6 +10,7 @@ import (
 
 type Repository interface {
 	Get(context.Context, uuid.UUID) (domain.GeneralSettings, error)
+	GetBySlug(context.Context, string) (domain.GeneralSettings, error)
 	UpdateSection(context.Context, uuid.UUID, uuid.UUID, string, json.RawMessage) (domain.GeneralSettings, error)
 	ActiveStorage(context.Context, uuid.UUID) (*domain.StorageProfile, error)
 	StorageByID(context.Context, uuid.UUID, uuid.UUID) (*domain.StorageProfile, error)

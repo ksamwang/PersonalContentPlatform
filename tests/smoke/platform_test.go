@@ -14,6 +14,7 @@ import (
 	contentdomain "github.com/ksamwang/PersonalContentPlatform/internal/content/domain"
 	integrationdomain "github.com/ksamwang/PersonalContentPlatform/internal/integration/domain"
 	knowledgedomain "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/domain"
+	settingsdomain "github.com/ksamwang/PersonalContentPlatform/internal/settings/domain"
 )
 
 func TestCorePlatformWorkflows(t *testing.T) {
@@ -25,6 +26,44 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	client.json(http.MethodGet, "/v1/auth/me", nil, &principal, http.StatusOK)
 	if principal["WorkspaceID"] != fixture.workspaceID.String() {
 		t.Fatalf("unexpected principal: %#v", principal)
+	}
+
+	var settings settingsdomain.Settings
+	client.json(http.MethodGet, workspaceBase+"/settings", nil, &settings, http.StatusOK)
+	if !settings.CanEdit || settings.General.Workspace.DefaultLocale != "zh-CN" {
+		t.Fatalf("unexpected settings: %#v", settings)
+	}
+	settings.General.Site.Name = "Smoke Notes"
+	settings.General.Site.PublicURL = "https://example.invalid"
+	settings.General.Site.Description = "Smoke description"
+	settings.General.Site.About = "Smoke about"
+	client.json(http.MethodPut, workspaceBase+"/settings/site", settings.General.Site, &settings.General, http.StatusOK)
+	settings.General.Workspace.Name = "Smoke Workspace"
+	settings.General.Workspace.SupportedLocales = []string{"zh-CN", "en"}
+	settings.General.Workspace.Timezone = "Asia/Shanghai"
+	client.json(http.MethodPut, workspaceBase+"/settings/workspace", settings.General.Workspace, &settings.General, http.StatusOK)
+	var storage settingsdomain.StorageProfile
+	client.json(http.MethodPut, workspaceBase+"/settings/storage", map[string]any{"name": "Smoke Files", "provider": "filesystem", "base_path": fixture.objectRoot}, &storage, http.StatusOK)
+	client.json(http.MethodPost, workspaceBase+"/settings/storage:test", nil, &map[string]any{}, http.StatusOK)
+	if storage.ID.String() == "" {
+		t.Fatal("storage settings did not return an id")
+	}
+	var publicSettings map[string]any
+	client.json(http.MethodGet, "/v1/public/"+fixture.workspace+"/settings", nil, &publicSettings, http.StatusOK)
+	if publicSettings["site"].(map[string]any)["name"] != "Smoke Notes" {
+		t.Fatalf("public settings not applied: %#v", publicSettings)
+	}
+	client.json(http.MethodPut, workspaceBase+"/settings/ai", map[string]any{"provider": "openai-compatible", "base_url": "https://example.invalid/v1", "api_key": "smoke-secret", "model": "smoke-model", "purpose_models": map[string]string{"summary": "smoke-summary"}}, &settings.AI, http.StatusOK)
+	if !settings.AI.APIKeySet || settings.AI.APIKey != "" || settings.AI.APIKeyMask == "" {
+		t.Fatalf("AI secret was not masked: %#v", settings.AI)
+	}
+	client.json(http.MethodPost, workspaceBase+"/settings/ai:test", nil, nil, http.StatusUnprocessableEntity)
+	if _, err := fixture.db.Exec(t.Context(), `UPDATE memberships SET role='editor' WHERE workspace_id=$1 AND user_id=$2`, fixture.workspaceID, fixture.userID); err != nil {
+		t.Fatal(err)
+	}
+	client.json(http.MethodPut, workspaceBase+"/settings/site", settings.General.Site, nil, http.StatusForbidden)
+	if _, err := fixture.db.Exec(t.Context(), `UPDATE memberships SET role='owner' WHERE workspace_id=$1 AND user_id=$2`, fixture.workspaceID, fixture.userID); err != nil {
+		t.Fatal(err)
 	}
 
 	var content contentdomain.Content
@@ -58,7 +97,7 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	}
 	waitForSearch(t, client, workspaceBase)
 
-	image := []byte("\x89PNG\r\n\x1a\nsmoke-image")
+	image := []byte("\x89PNG\r\n\x1a\nsmoke-image-" + fixture.workspaceID.String())
 	var plan assetdomain.UploadPlan
 	client.json(http.MethodPost, workspaceBase+"/assets:prepare-upload", map[string]any{
 		"filename": "smoke.png", "mime": "image/png", "size": len(image),
@@ -69,6 +108,9 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	fixture.blobID = asset.BlobID
 	if asset.State != "ready" || asset.SHA256 == "" {
 		t.Fatalf("unexpected asset: %#v", asset)
+	}
+	if asset.StorageProfileID == nil || *asset.StorageProfileID != storage.ID {
+		t.Fatalf("asset did not retain storage profile: %#v", asset)
 	}
 	var assetItems struct {
 		Items []assetdomain.Asset `json:"items"`
@@ -101,7 +143,7 @@ func TestCorePlatformWorkflows(t *testing.T) {
 
 	var webhook integrationdomain.WebhookEndpoint
 	client.json(http.MethodPost, workspaceBase+"/webhooks", map[string]any{
-		"name": "Smoke Webhook", "url": "https://example.invalid/smoke", "secret_ref": "PCP_SMOKE_SECRET", "event_types": []string{"NeverEmitted"},
+		"name": "Smoke Webhook", "url": "https://example.invalid/smoke", "secret": "smoke-webhook-secret", "event_types": []string{"NeverEmitted"},
 	}, &webhook, http.StatusCreated)
 	var webhookItems struct {
 		Items []integrationdomain.WebhookEndpoint `json:"items"`
@@ -110,8 +152,15 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	if len(webhookItems.Items) != 1 {
 		t.Fatalf("expected one webhook, got %d", len(webhookItems.Items))
 	}
+	if !webhookItems.Items[0].SecretSet || webhookItems.Items[0].SecretValue != "" {
+		t.Fatalf("webhook secret was exposed: %#v", webhookItems.Items[0])
+	}
 	client.json(http.MethodPatch, workspaceBase+"/webhooks/"+webhook.ID.String(), map[string]any{"enabled": false}, nil, http.StatusNoContent)
 	client.json(http.MethodDelete, workspaceBase+"/webhooks/"+webhook.ID.String(), nil, nil, http.StatusNoContent)
+	// Clear the intentionally unreachable provider so the normal unavailable path remains deterministic.
+	if _, err := fixture.db.Exec(t.Context(), `DELETE FROM ai_provider_configs WHERE workspace_id=$1`, fixture.workspaceID); err != nil {
+		t.Fatal(err)
+	}
 	client.json(http.MethodPost, workspaceBase+"/ai/suggestions", map[string]any{
 		"target_id": content.ID, "purpose": "summary", "input": "Smoke body",
 	}, nil, http.StatusServiceUnavailable)

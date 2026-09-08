@@ -21,6 +21,7 @@ func NewHTTP(s *application.Service, a func(http.Handler) http.Handler) *HTTP {
 	return &HTTP{service: s, auth: a}
 }
 func (h *HTTP) Register(r chi.Router) {
+	r.Get("/v1/public/{workspace}/settings", h.public)
 	r.Group(func(r chi.Router) {
 		r.Use(h.auth, h.scope)
 		r.Get("/v1/workspaces/{workspaceID}/settings", h.get)
@@ -30,6 +31,14 @@ func (h *HTTP) Register(r chi.Router) {
 		r.Post("/v1/workspaces/{workspaceID}/settings/storage:test", h.testStorage)
 		r.Post("/v1/workspaces/{workspaceID}/settings/ai:test", h.testAI)
 	})
+}
+func (h *HTTP) public(w http.ResponseWriter, r *http.Request) {
+	v, err := h.service.Public(r.Context(), chi.URLParam(r, "workspace"))
+	if err != nil {
+		httpx.Error(w, 404, "workspace_not_found", "workspace was not found")
+		return
+	}
+	httpx.JSON(w, 200, map[string]any{"workspace": v.Workspace, "site": v.Site})
 }
 
 func (h *HTTP) testStorage(w http.ResponseWriter, r *http.Request) {
@@ -112,11 +121,22 @@ func (h *HTTP) saveStorage(w http.ResponseWriter, r *http.Request) {
 	if !owner(w, r) {
 		return
 	}
-	var v domain.StorageProfile
-	if err := httpx.Decode(w, r, &v); err != nil {
+	var input struct {
+		ID        uuid.UUID `json:"id"`
+		Name      string    `json:"name"`
+		Provider  string    `json:"provider"`
+		Endpoint  string    `json:"endpoint"`
+		Region    string    `json:"region"`
+		Bucket    string    `json:"bucket"`
+		AccessKey string    `json:"access_key"`
+		SecretKey string    `json:"secret_key"`
+		BasePath  string    `json:"base_path"`
+	}
+	if err := httpx.Decode(w, r, &input); err != nil {
 		httpx.Error(w, 400, "invalid_request", err.Error())
 		return
 	}
+	v := domain.StorageProfile{ID: input.ID, Name: input.Name, Provider: input.Provider, Endpoint: input.Endpoint, Region: input.Region, Bucket: input.Bucket, AccessKey: input.AccessKey, SecretKey: input.SecretKey, BasePath: input.BasePath}
 	ws, user, _ := principal(r)
 	saved, err := h.service.SaveStorage(r.Context(), ws, user, v)
 	if err != nil {
@@ -129,11 +149,18 @@ func (h *HTTP) saveAI(w http.ResponseWriter, r *http.Request) {
 	if !owner(w, r) {
 		return
 	}
-	var v domain.AIConfig
-	if err := httpx.Decode(w, r, &v); err != nil {
+	var input struct {
+		Provider      string            `json:"provider"`
+		BaseURL       string            `json:"base_url"`
+		APIKey        string            `json:"api_key"`
+		Model         string            `json:"model"`
+		PurposeModels map[string]string `json:"purpose_models"`
+	}
+	if err := httpx.Decode(w, r, &input); err != nil {
 		httpx.Error(w, 400, "invalid_request", err.Error())
 		return
 	}
+	v := domain.AIConfig{Provider: input.Provider, BaseURL: input.BaseURL, APIKey: input.APIKey, Model: input.Model, PurposeModels: input.PurposeModels}
 	ws, user, _ := principal(r)
 	saved, err := h.service.SaveAI(r.Context(), ws, user, v)
 	if err != nil {

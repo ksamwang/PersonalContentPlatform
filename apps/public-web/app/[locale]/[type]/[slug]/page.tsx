@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "../../../../components/SiteHeader";
-import { getPage } from "../../../../lib/content";
+import { getPage, getPublicSettings } from "../../../../lib/content";
 type Props = {
   params: Promise<{ locale: string; type: string; slug: string }>;
 };
@@ -18,11 +18,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Published({ params }: Props) {
   const p = await params,
     apiLocale = p.locale === "zh" ? "zh-CN" : "en",
-    page = await getPage(apiLocale, p.type, p.slug);
+    [page,settings] = await Promise.all([getPage(apiLocale, p.type, p.slug),getPublicSettings()]);
   if (!page) notFound();
   return (
     <>
-      <SiteHeader locale={p.locale} />
+      <SiteHeader locale={p.locale} name={settings.site.name} rss={settings.site.rss_enabled} />
       <main id="content" className="article-shell">
         <article>
           <header>
@@ -42,8 +42,8 @@ export default async function Published({ params }: Props) {
         </article>
       </main>
       <footer>
-        <span>Field Notes</span>
-        <span>Capture · Connect · Publish</span>
+        <span>{settings.site.name}</span>
+        <span>{settings.site.footer}</span>
       </footer>
     </>
   );

@@ -58,6 +58,18 @@ func (r *Repository) UserByEmail(ctx context.Context, email string) (domain.User
 func (r *Repository) UserByID(ctx context.Context, userID uuid.UUID) (domain.User, error) {
 	return r.user(ctx, `u.id=$1`, userID)
 }
+func (r *Repository) AuthPolicyByUser(ctx context.Context, userID uuid.UUID, fallback time.Duration) (domain.AuthPolicy, error) {
+	v := domain.AuthPolicy{PasswordLoginEnabled: true, PasskeyEnabled: true, SessionTTL: fallback}
+	var hours *int
+	err := r.db.QueryRow(ctx, `SELECT COALESCE((w.settings_json#>>'{auth,password_login_enabled}')::boolean,true),COALESCE((w.settings_json#>>'{auth,passkey_enabled}')::boolean,true),(w.settings_json#>>'{auth,session_ttl_hours}')::integer FROM memberships m JOIN workspaces w ON w.id=m.workspace_id WHERE m.user_id=$1 ORDER BY CASE m.role WHEN 'owner' THEN 1 WHEN 'editor' THEN 2 ELSE 3 END LIMIT 1`, userID).Scan(&v.PasswordLoginEnabled, &v.PasskeyEnabled, &hours)
+	if err != nil {
+		return v, err
+	}
+	if hours != nil && *hours > 0 {
+		v.SessionTTL = time.Duration(*hours) * time.Hour
+	}
+	return v, nil
+}
 func (r *Repository) user(ctx context.Context, where string, arg any) (domain.User, error) {
 	var u domain.User
 	err := r.db.QueryRow(ctx, `SELECT u.id,u.email,u.display_name,COALESCE(u.password_hash,''),u.status FROM users u WHERE `+where, arg).Scan(&u.ID, &u.Email, &u.DisplayName, &u.PasswordHash, &u.Status)

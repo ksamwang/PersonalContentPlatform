@@ -39,6 +39,14 @@ func (r *Repository) Get(ctx context.Context, ws uuid.UUID) (domain.GeneralSetti
 	return value, nil
 }
 
+func (r *Repository) GetBySlug(ctx context.Context, slug string) (domain.GeneralSettings, error) {
+	var ws uuid.UUID
+	if err := r.db.QueryRow(ctx, `SELECT id FROM workspaces WHERE slug=$1`, slug).Scan(&ws); err != nil {
+		return domain.GeneralSettings{}, err
+	}
+	return r.Get(ctx, ws)
+}
+
 func (r *Repository) UpdateSection(ctx context.Context, ws, actor uuid.UUID, section string, raw json.RawMessage) (domain.GeneralSettings, error) {
 	current, err := r.Get(ctx, ws)
 	if err != nil {
