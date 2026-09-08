@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	integration "github.com/ksamwang/PersonalContentPlatform/internal/integration/application"
+	integrationpg "github.com/ksamwang/PersonalContentPlatform/internal/integration/infrastructure/postgres"
+	webhook "github.com/ksamwang/PersonalContentPlatform/internal/integration/infrastructure/webhook"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/database"
 	publication "github.com/ksamwang/PersonalContentPlatform/internal/publication/application"
@@ -26,7 +29,13 @@ func main() {
 	}
 	defer db.Close()
 	slog.Info("worker started")
-	if err := publication.NewProcessor(db, "default").Run(ctx); err != nil {
+	integrationRepository := integrationpg.New(db)
+	errors := make(chan error, 2)
+	go func() { errors <- publication.NewProcessor(db, "default").Run(ctx) }()
+	go func() {
+		errors <- integration.NewWebhookDispatcher(integrationRepository, webhook.NewSender(), 8).Run(ctx)
+	}()
+	if err := <-errors; err != nil {
 		slog.Error("worker failed", "error", err)
 		os.Exit(1)
 	}

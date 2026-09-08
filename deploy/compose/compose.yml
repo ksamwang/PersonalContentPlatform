@@ -16,18 +16,36 @@ services:
     build: ../..
     entrypoint: ["/app/migrate", "up"]
     env_file: ../../.env
+    environment:
+      DATABASE_URL: ""
+      DATABASE_URL_FILE: /run/secrets/database_url
+    secrets: [database_url]
     depends_on:
       postgres: { condition: service_healthy }
   api:
     build: ../..
     env_file: ../../.env
+    environment:
+      DATABASE_URL: ""
+      DATABASE_URL_FILE: /run/secrets/database_url
+    secrets: [database_url]
     depends_on:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
   worker:
     build: ../..
     entrypoint: ["/app/worker"]
     env_file: ../../.env
+    environment:
+      DATABASE_URL: ""
+      DATABASE_URL_FILE: /run/secrets/database_url
+    secrets: [database_url]
     depends_on:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
@@ -39,8 +57,14 @@ services:
     environment:
       API_ORIGIN: http://api:8080
       WORKSPACE_SLUG: personal
-    depends_on: [api]
+    depends_on:
+      api: { condition: service_healthy }
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
   studio-web:
     build:
       context: ../..
@@ -48,19 +72,29 @@ services:
       args: { WEB_APP: studio-web }
     environment:
       API_ORIGIN: http://api:8080
-    depends_on: [api]
+    depends_on:
+      api: { condition: service_healthy }
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3001"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
   caddy:
     image: caddy:2-alpine
     ports: ["80:80", "443:443"]
     volumes:
       - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
-    depends_on: [public-web, studio-web]
+    depends_on:
+      public-web: { condition: service_healthy }
+      studio-web: { condition: service_healthy }
     restart: unless-stopped
 secrets:
   db_password:
     file: ../secrets/db_password.txt
+  database_url:
+    file: ../secrets/database_url.txt
 volumes:
   postgres-data:
   caddy-data:

@@ -23,8 +23,12 @@ type Config struct {
 }
 
 func Load() (Config, error) {
+	databaseURL, err := secretValue("DATABASE_URL")
+	if err != nil {
+		return Config{}, err
+	}
 	c := Config{
-		Environment: env("APP_ENV", "development"), HTTPAddr: env("HTTP_ADDR", ":8080"), DatabaseURL: os.Getenv("DATABASE_URL"),
+		Environment: env("APP_ENV", "development"), HTTPAddr: env("HTTP_ADDR", ":8080"), DatabaseURL: databaseURL,
 		DBPoolMax: int32(envInt("DB_POOL_MAX", 10)), DefaultLocale: env("DEFAULT_LOCALE", "zh-CN"), SupportedLocales: split(env("SUPPORTED_LOCALES", "zh-CN,en")),
 		SessionCookieName: env("SESSION_COOKIE_NAME", "pcp_session"), SessionTTL: envDuration("SESSION_TTL", 30*24*time.Hour), PasswordPepper: os.Getenv("PASSWORD_PEPPER"),
 		WebAuthnRPID: env("WEBAUTHN_RP_ID", "localhost"), WebAuthnOrigins: split(env("WEBAUTHN_RP_ORIGINS", "http://localhost:3001")),
@@ -38,6 +42,21 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("SUPPORTED_LOCALES must not be empty")
 	}
 	return c, nil
+}
+
+func secretValue(key string) (string, error) {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return value, nil
+	}
+	path := strings.TrimSpace(os.Getenv(key + "_FILE"))
+	if path == "" {
+		return "", nil
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read %s_FILE: %w", key, err)
+	}
+	return strings.TrimSpace(string(contents)), nil
 }
 
 func env(key, fallback string) string {

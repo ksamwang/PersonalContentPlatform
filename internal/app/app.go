@@ -18,6 +18,9 @@ import (
 	identityapp "github.com/ksamwang/PersonalContentPlatform/internal/identity/application"
 	identitypg "github.com/ksamwang/PersonalContentPlatform/internal/identity/infrastructure/postgres"
 	identityhttp "github.com/ksamwang/PersonalContentPlatform/internal/identity/transport"
+	integrationapp "github.com/ksamwang/PersonalContentPlatform/internal/integration/application"
+	integrationpg "github.com/ksamwang/PersonalContentPlatform/internal/integration/infrastructure/postgres"
+	integrationhttp "github.com/ksamwang/PersonalContentPlatform/internal/integration/transport"
 	knowledgeapp "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/application"
 	knowledgepg "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/infrastructure/postgres"
 	knowledgehttp "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/transport"
@@ -29,14 +32,15 @@ import (
 )
 
 type App struct {
-	DB        *pgxpool.Pool
-	StartedAt time.Time
-	identity  *identityhttp.HTTP
-	content   *contenthttp.HTTP
-	public    *publicationhttp.HTTP
-	asset     *assethttp.HTTP
-	knowledge *knowledgehttp.HTTP
-	ai        *aihttp.HTTP
+	DB          *pgxpool.Pool
+	StartedAt   time.Time
+	identity    *identityhttp.HTTP
+	content     *contenthttp.HTTP
+	public      *publicationhttp.HTTP
+	asset       *assethttp.HTTP
+	knowledge   *knowledgehttp.HTTP
+	ai          *aihttp.HTTP
+	integration *integrationhttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -55,7 +59,18 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 	assetService := assetapp.New(assetpg.New(db), storage)
 	knowledgeService := knowledgeapp.New(knowledgepg.New(db))
 	aiService := aiapp.New(db, openai.New(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
-	return &App{DB: db, StartedAt: time.Now().UTC(), identity: identityTransport, content: contenthttp.NewHTTP(contentService, identityTransport.RequireSession), public: publicationhttp.NewHTTP(db), asset: assethttp.NewHTTP(assetService, identityTransport.RequireSession), knowledge: knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession), ai: aihttp.NewHTTP(aiService, identityTransport.RequireSession)}, nil
+	integrationRepository := integrationpg.New(db)
+	return &App{
+		DB:          db,
+		StartedAt:   time.Now().UTC(),
+		identity:    identityTransport,
+		content:     contenthttp.NewHTTP(contentService, identityTransport.RequireSession),
+		public:      publicationhttp.NewHTTP(db),
+		asset:       assethttp.NewHTTP(assetService, identityTransport.RequireSession),
+		knowledge:   knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession),
+		ai:          aihttp.NewHTTP(aiService, identityTransport.RequireSession),
+		integration: integrationhttp.NewHTTP(integrationapp.NewExportService(integrationRepository), integrationapp.NewWebhookService(integrationRepository), identityTransport.RequireSession),
+	}, nil
 }
 func (a *App) Router() http.Handler {
 	r := chi.NewRouter()
@@ -67,5 +82,6 @@ func (a *App) Router() http.Handler {
 	a.asset.Register(r)
 	a.knowledge.Register(r)
 	a.ai.Register(r)
+	a.integration.Register(r)
 	return r
 }
