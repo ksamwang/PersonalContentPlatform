@@ -352,10 +352,18 @@ select:focus-visible,
 .settings-status { min-height: 22px; margin-top: 14px; color: var(--muted); }
 .settings-status.saved { color: #157347; }
 .settings-status.error { color: #a32118; }
+.webhook-list { display: grid; gap: 10px; margin-top: 20px; }
+.webhook-list > p { color: var(--muted); }
+.webhook-list article { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
+.webhook-list article > div { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.webhook-list article > div:first-child { align-items: flex-start; flex-direction: column; }
+.webhook-list article span,.webhook-list article small { color: var(--muted); overflow-wrap: anywhere; }
+.danger { min-height: 44px; border: 1px solid #b42318; border-radius: 8px; color: #9a1b13; background: transparent; padding: 8px 14px; }
 @media (max-width: 760px) {
   .settings-fields { grid-template-columns: 1fr; }
   .settings-card > header { flex-direction: column; }
   .settings-card > header button { width: 100%; }
+  .webhook-list article,.webhook-list article > div:last-child { align-items: stretch; flex-direction: column; }
 }
 .workspace {
   min-width: 0;

@@ -15,6 +15,6 @@ type Repository interface {
 	SaveDraft(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, int, string, string, json.RawMessage, json.RawMessage) (domain.Draft, error)
 	SealRevision(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, int) (domain.Revision, error)
 	MarkReady(context.Context, uuid.UUID, uuid.UUID) error
-	Publish(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, uuid.UUID) (uuid.UUID, error)
+	Publish(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, uuid.UUID, string) (uuid.UUID, error)
 	Search(context.Context, uuid.UUID, string, string, int) ([]domain.Content, error)
 }

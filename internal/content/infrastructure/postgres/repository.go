@@ -196,7 +196,7 @@ func (r *Repository) MarkReady(ctx context.Context, workspaceID, localizationID 
 	}
 	return err
 }
-func (r *Repository) Publish(ctx context.Context, workspaceID, userID, contentID uuid.UUID, locale string, targetID uuid.UUID) (uuid.UUID, error) {
+func (r *Repository) Publish(ctx context.Context, workspaceID, userID, contentID uuid.UUID, locale string, targetID uuid.UUID, channel string) (uuid.UUID, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return uuid.Nil, err
@@ -211,7 +211,7 @@ func (r *Repository) Publish(ctx context.Context, workspaceID, userID, contentID
 		return uuid.Nil, fmt.Errorf("content localization is not ready")
 	}
 	if targetID == uuid.Nil {
-		if err = tx.QueryRow(ctx, `INSERT INTO publication_targets(id,workspace_id,channel,name) VALUES($1,$2,'website','Primary website') ON CONFLICT(workspace_id,channel,name) DO UPDATE SET enabled=true RETURNING id`, id.New(), workspaceID).Scan(&targetID); err != nil {
+		if err = tx.QueryRow(ctx, `INSERT INTO publication_targets(id,workspace_id,channel,name) VALUES($1,$2,$3,$4) ON CONFLICT(workspace_id,channel,name) DO UPDATE SET enabled=true RETURNING id`, id.New(), workspaceID, channel, "Primary "+channel).Scan(&targetID); err != nil {
 			return uuid.Nil, err
 		}
 	}

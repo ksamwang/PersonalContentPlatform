@@ -17,9 +17,14 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/settings/ports"
 )
 
-type Service struct{ repo ports.Repository }
+type Service struct {
+	repo           ports.Repository
+	filesystemRoot string
+}
 
-func New(repo ports.Repository) *Service { return &Service{repo: repo} }
+func New(repo ports.Repository, filesystemRoot string) *Service {
+	return &Service{repo: repo, filesystemRoot: filesystemRoot}
+}
 
 func (s *Service) Get(ctx context.Context, ws uuid.UUID, canEdit bool) (domain.Settings, error) {
 	general, err := s.repo.Get(ctx, ws)
@@ -155,7 +160,7 @@ func (s *Service) TestStorage(ctx context.Context, ws uuid.UUID) error {
 	if err != nil {
 		return fmt.Errorf("storage is not configured")
 	}
-	storage, err := storagefactory.NewProfile(ctx, *profile)
+	storage, err := storagefactory.NewProfileWithRoot(ctx, *profile, s.filesystemRoot)
 	if err != nil {
 		return err
 	}

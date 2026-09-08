@@ -54,6 +54,7 @@ go test ./tests/smoke -run TestCorePlatformWorkflows -v -count=1
 ## 主要能力
 
 - 邮箱密码登录使用 Argon2id，会话使用 HttpOnly Cookie；同时支持 WebAuthn Passkey。
+- Workspace 设置可在 Studio 中管理站点、语言、登录、发布、Filesystem/S3/R2/阿里 OSS 与 OpenAI 兼容 Provider；部署级参数保留在 `.env`。
 - Article、Note、Page 采用不可变 Revision，`zh-CN` 与 `en` 独立维护并发布到 Website/RSS。
 - 资产存储可选 `filesystem`、`s3`、`r2`、`oss`，统一通过 Storage Port 使用。
 - AI 接入 OpenAI-compatible API，输出只生成可审查的 Suggestion，不直接覆盖内容事实。

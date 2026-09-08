@@ -76,7 +76,13 @@ func (s *Service) MarkReady(ctx context.Context, workspaceID, localizationID uui
 	return s.repo.MarkReady(ctx, workspaceID, localizationID)
 }
 func (s *Service) Publish(ctx context.Context, workspaceID, userID, contentID uuid.UUID, locale string, targetID uuid.UUID) (uuid.UUID, error) {
-	return s.repo.Publish(ctx, workspaceID, userID, contentID, locale, targetID)
+	channel := "website"
+	if s.settings != nil {
+		if configured, err := s.settings.Get(ctx, workspaceID); err == nil && configured.Publication.DefaultChannel != "" {
+			channel = configured.Publication.DefaultChannel
+		}
+	}
+	return s.repo.Publish(ctx, workspaceID, userID, contentID, locale, targetID, channel)
 }
 func (s *Service) Search(ctx context.Context, workspaceID uuid.UUID, locale, query string, limit int) ([]domain.Content, error) {
 	if limit < 1 || limit > 100 {

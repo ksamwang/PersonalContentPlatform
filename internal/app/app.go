@@ -55,13 +55,13 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 		return nil, err
 	}
 	identityTransport := identityhttp.NewHTTP(sessions, passkeys, cfg.SessionCookieName, cfg.SessionTTL, cfg.Environment != "development")
-	contentService := contentapp.New(contentpg.New(db), cfg.SupportedLocales)
 	fallbackStorage, err := storagefactory.New(context.Background(), cfg)
 	if err != nil {
 		return nil, err
 	}
 	settingsRepository := settingspg.New(db)
-	storage := storagefactory.NewResolver(settingsRepository, fallbackStorage)
+	contentService := contentapp.New(contentpg.New(db), cfg.SupportedLocales, settingsRepository)
+	storage := storagefactory.NewResolver(settingsRepository, fallbackStorage, cfg.StorageBasePath)
 	assetService := assetapp.New(assetpg.New(db), storage)
 	knowledgeService := knowledgeapp.New(knowledgepg.New(db))
 	aiService := aiapp.New(db, openai.NewResolver(settingsRepository, openai.New(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)))
@@ -76,7 +76,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 		knowledge:   knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession),
 		ai:          aihttp.NewHTTP(aiService, identityTransport.RequireSession),
 		integration: integrationhttp.NewHTTP(integrationapp.NewExportService(integrationRepository), integrationapp.NewWebhookService(integrationRepository), identityTransport.RequireSession),
-		settings:    settingshttp.NewHTTP(settingsapp.New(settingsRepository), identityTransport.RequireSession),
+		settings:    settingshttp.NewHTTP(settingsapp.New(settingsRepository, cfg.StorageBasePath), identityTransport.RequireSession),
 	}, nil
 }
 func (a *App) Router() http.Handler {

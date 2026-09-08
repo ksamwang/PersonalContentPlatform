@@ -80,13 +80,23 @@ type rssItem struct {
 
 func (h *HTTP) rss(w http.ResponseWriter, r *http.Request) {
 	workspace, locale := chi.URLParam(r, "workspace"), chi.URLParam(r, "locale")
+	var siteName, publicURL, description string
+	var enabled bool
+	if err := h.db.QueryRow(r.Context(), `SELECT COALESCE(NULLIF(settings_json#>>'{site,name}',''),name),COALESCE(settings_json#>>'{site,public_url}',''),COALESCE(settings_json#>>'{site,description}','Latest publications'),COALESCE((settings_json#>>'{site,rss_enabled}')::boolean,true) FROM workspaces WHERE slug=$1`, workspace).Scan(&siteName, &publicURL, &description, &enabled); err != nil || !enabled {
+		httpx.Error(w, 404, "rss_disabled", "feed is disabled")
+		return
+	}
 	rows, err := h.db.Query(r.Context(), `SELECT v.type,v.slug,v.title,v.summary,v.published_at FROM publication_views v JOIN workspaces w ON w.id=v.workspace_id WHERE w.slug=$1 AND v.locale=$2 AND v.visibility='public' ORDER BY v.published_at DESC LIMIT 50`, workspace, locale)
 	if err != nil {
 		httpx.Error(w, 500, "rss_failed", "feed is unavailable")
 		return
 	}
 	defer rows.Close()
-	feed := rssDoc{Version: "2.0", Channel: rssChannel{Title: "Personal Content Platform", Link: "/" + locale, Description: "Latest publications"}}
+	link := publicURL
+	if link == "" {
+		link = "/" + locale
+	}
+	feed := rssDoc{Version: "2.0", Channel: rssChannel{Title: siteName, Link: link, Description: description}}
 	for rows.Next() {
 		var kind, slug, title, summary string
 		var published time.Time

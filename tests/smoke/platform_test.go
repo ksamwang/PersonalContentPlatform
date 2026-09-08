@@ -62,6 +62,7 @@ func TestCorePlatformWorkflows(t *testing.T) {
 		t.Fatal(err)
 	}
 	client.json(http.MethodPut, workspaceBase+"/settings/site", settings.General.Site, nil, http.StatusForbidden)
+	client.json(http.MethodPost, workspaceBase+"/webhooks", map[string]any{"name": "Forbidden", "url": "https://example.invalid", "secret": "nope", "event_types": []string{}}, nil, http.StatusForbidden)
 	if _, err := fixture.db.Exec(t.Context(), `UPDATE memberships SET role='owner' WHERE workspace_id=$1 AND user_id=$2`, fixture.workspaceID, fixture.userID); err != nil {
 		t.Fatal(err)
 	}

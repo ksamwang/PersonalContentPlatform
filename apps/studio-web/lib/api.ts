@@ -56,6 +56,7 @@ export type GeneralSettings = {
 export type StorageSettings = { id?: string; name: string; provider: "filesystem"|"s3"|"r2"|"oss"; endpoint: string; region: string; bucket: string; access_key_mask?: string; secret_key_set?: boolean; base_path: string; active?: boolean };
 export type AISettings = { provider: string; base_url: string; api_key_mask?: string; api_key_set?: boolean; model: string; purpose_models: Record<string,string> };
 export type WorkspaceSettings = { general: GeneralSettings; storage: StorageSettings|null; ai: AISettings; can_edit: boolean };
+export type WebhookEndpoint = {id:string;name:string;url:string;secret_set:boolean;enabled:boolean;event_types:string[]};
 export class APIError extends Error {
   constructor(
     public status: number,
@@ -177,4 +178,8 @@ export const api = {
   testStorage: (ws: string) => request<{ok:boolean}>(`/v1/workspaces/${ws}/settings/storage:test`, { method: "POST" }),
   saveAI: (ws: string, value: AISettings & { api_key?: string }) => request<AISettings>(`/v1/workspaces/${ws}/settings/ai`, { method: "PUT", body: JSON.stringify(value) }),
   testAI: (ws: string) => request<{ok:boolean}>(`/v1/workspaces/${ws}/settings/ai:test`, { method: "POST" }),
+  webhooks: (ws:string)=>requestItems<WebhookEndpoint>(`/v1/workspaces/${ws}/webhooks`),
+  createWebhook:(ws:string,value:{name:string;url:string;secret:string;event_types:string[]})=>request<WebhookEndpoint>(`/v1/workspaces/${ws}/webhooks`,{method:"POST",body:JSON.stringify(value)}),
+  setWebhookEnabled:(ws:string,id:string,enabled:boolean)=>request<void>(`/v1/workspaces/${ws}/webhooks/${id}`,{method:"PATCH",body:JSON.stringify({enabled})}),
+  deleteWebhook:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/webhooks/${id}`,{method:"DELETE"}),
 };

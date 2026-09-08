@@ -45,10 +45,19 @@ func scopeWorkspace(next http.Handler) http.Handler {
 
 func principal(r *http.Request) identityPrincipal {
 	value, _ := identity.Principal(r.Context())
-	return identityPrincipal{UserID: value.UserID, WorkspaceID: value.WorkspaceID}
+	return identityPrincipal{UserID: value.UserID, WorkspaceID: value.WorkspaceID, Role: value.Role}
 }
 
 type identityPrincipal struct {
 	UserID      uuid.UUID
 	WorkspaceID uuid.UUID
+	Role        string
+}
+
+func requireOwner(w http.ResponseWriter, r *http.Request) bool {
+	if principal(r).Role != "owner" {
+		httpx.Error(w, http.StatusForbidden, "owner_required", "only workspace owners can change integrations")
+		return false
+	}
+	return true
 }

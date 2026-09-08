@@ -11,6 +11,8 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/settings/domain"
 	settingsports "github.com/ksamwang/PersonalContentPlatform/internal/settings/ports"
+	"path/filepath"
+	"strings"
 )
 
 func New(ctx context.Context, c config.Config) (ports.Storage, error) {
@@ -27,12 +29,13 @@ func New(ctx context.Context, c config.Config) (ports.Storage, error) {
 }
 
 type Resolver struct {
-	repository settingsports.Repository
-	fallback   ports.Storage
+	repository     settingsports.Repository
+	fallback       ports.Storage
+	filesystemRoot string
 }
 
-func NewResolver(repository settingsports.Repository, fallback ports.Storage) *Resolver {
-	return &Resolver{repository: repository, fallback: fallback}
+func NewResolver(repository settingsports.Repository, fallback ports.Storage, filesystemRoot string) *Resolver {
+	return &Resolver{repository: repository, fallback: fallback, filesystemRoot: filesystemRoot}
 }
 func (r *Resolver) Resolve(ctx context.Context, workspaceID uuid.UUID, profileID *uuid.UUID) (ports.Storage, *uuid.UUID, error) {
 	var profile *domain.StorageProfile
@@ -48,8 +51,42 @@ func (r *Resolver) Resolve(ctx context.Context, workspaceID uuid.UUID, profileID
 		}
 		return r.fallback, nil, nil
 	}
-	storage, err := NewProfile(ctx, *profile)
+	storage, err := NewProfileWithRoot(ctx, *profile, r.filesystemRoot)
 	return storage, &profile.ID, err
+}
+func NewProfileWithRoot(ctx context.Context, p domain.StorageProfile, root string) (ports.Storage, error) {
+	if p.Provider != "filesystem" {
+		return NewProfile(ctx, p)
+	}
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	configured := strings.TrimSpace(p.BasePath)
+	if configured == "" || configured == "." {
+		configured = rootAbs
+	} else {
+		candidate, absErr := filepath.Abs(configured)
+		if absErr != nil {
+			return nil, absErr
+		}
+		if filepath.Clean(candidate) == filepath.Clean(rootAbs) {
+			configured = rootAbs
+		} else if !filepath.IsAbs(p.BasePath) {
+			configured = filepath.Join(rootAbs, p.BasePath)
+		} else {
+			configured = candidate
+		}
+	}
+	resolved, err := filepath.Abs(configured)
+	if err != nil {
+		return nil, err
+	}
+	relative, err := filepath.Rel(rootAbs, resolved)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("filesystem path must stay within the configured storage root")
+	}
+	return filesystem.New(resolved)
 }
 func NewProfile(ctx context.Context, p domain.StorageProfile) (ports.Storage, error) {
 	switch p.Provider {

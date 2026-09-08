@@ -17,6 +17,9 @@ type createWebhookInput struct {
 }
 
 func (h *HTTP) createWebhook(w http.ResponseWriter, r *http.Request) {
+	if !requireOwner(w, r) {
+		return
+	}
 	var input createWebhookInput
 	if err := httpx.Decode(w, r, &input); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "invalid_request", err.Error())
@@ -44,6 +47,9 @@ type setWebhookEnabledInput struct {
 }
 
 func (h *HTTP) setWebhookEnabled(w http.ResponseWriter, r *http.Request) {
+	if !requireOwner(w, r) {
+		return
+	}
 	endpointID, err := uuid.Parse(chi.URLParam(r, "endpointID"))
 	var input setWebhookEnabledInput
 	if err != nil || httpx.Decode(w, r, &input) != nil {
@@ -58,6 +64,9 @@ func (h *HTTP) setWebhookEnabled(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTP) deleteWebhook(w http.ResponseWriter, r *http.Request) {
+	if !requireOwner(w, r) {
+		return
+	}
 	endpointID, err := uuid.Parse(chi.URLParam(r, "endpointID"))
 	if err != nil {
 		httpx.Error(w, http.StatusBadRequest, "invalid_id", "invalid webhook endpoint id")
