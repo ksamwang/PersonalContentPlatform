@@ -116,10 +116,11 @@ func maskStorage(v *domain.StorageProfile) {
 
 func (r *Repository) SaveStorage(ctx context.Context, ws, actor uuid.UUID, v domain.StorageProfile) (domain.StorageProfile, error) {
 	old, _ := r.ActiveStorage(ctx, ws)
-	if v.ID == uuid.Nil {
+	locationChanged := old != nil && old.ID == v.ID && (old.Provider != v.Provider || old.Endpoint != v.Endpoint || old.Region != v.Region || old.Bucket != v.Bucket || old.BasePath != v.BasePath)
+	if v.ID == uuid.Nil || locationChanged {
 		v.ID = id.New()
 	}
-	if old != nil {
+	if old != nil && old.Provider == v.Provider {
 		if v.AccessKey == "" {
 			v.AccessKey = old.AccessKey
 		}

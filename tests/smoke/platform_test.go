@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	assetdomain "github.com/ksamwang/PersonalContentPlatform/internal/asset/domain"
 	contentdomain "github.com/ksamwang/PersonalContentPlatform/internal/content/domain"
 	integrationdomain "github.com/ksamwang/PersonalContentPlatform/internal/integration/domain"
@@ -112,6 +113,18 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	}
 	if asset.StorageProfileID == nil || *asset.StorageProfileID != storage.ID {
 		t.Fatalf("asset did not retain storage profile: %#v", asset)
+	}
+	var switchedStorage settingsdomain.StorageProfile
+	client.json(http.MethodPut, workspaceBase+"/settings/storage", map[string]any{"id": storage.ID, "name": "Smoke Files Next", "provider": "filesystem", "base_path": "next"}, &switchedStorage, http.StatusOK)
+	if switchedStorage.ID == storage.ID {
+		t.Fatal("changing storage provider configuration must create a new profile")
+	}
+	var retainedProfileID *uuid.UUID
+	if err := fixture.db.QueryRow(t.Context(), `SELECT storage_profile_id FROM blobs WHERE id=$1`, asset.BlobID).Scan(&retainedProfileID); err != nil {
+		t.Fatal(err)
+	}
+	if retainedProfileID == nil || *retainedProfileID != storage.ID {
+		t.Fatalf("old blob lost its storage profile: %v", retainedProfileID)
 	}
 	var assetItems struct {
 		Items []assetdomain.Asset `json:"items"`
