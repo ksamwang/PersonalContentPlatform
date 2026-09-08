@@ -9,13 +9,16 @@ import (
 )
 
 type Config struct {
-	Environment, HTTPAddr, DatabaseURL, DefaultLocale string
-	DBPoolMax                                         int32
-	SupportedLocales                                  []string
-	SessionCookieName                                 string
-	SessionTTL                                        time.Duration
-	PasswordPepper, WebAuthnRPID                      string
-	WebAuthnOrigins                                   []string
+	Environment, HTTPAddr, DatabaseURL, DefaultLocale   string
+	DBPoolMax                                           int32
+	SupportedLocales                                    []string
+	SessionCookieName                                   string
+	SessionTTL                                          time.Duration
+	PasswordPepper, WebAuthnRPID                        string
+	WebAuthnOrigins                                     []string
+	StorageProvider, StorageEndpoint                    string
+	StorageRegion, StorageBucket                        string
+	StorageAccessKey, StorageSecretKey, StorageBasePath string
 }
 
 func Load() (Config, error) {
@@ -24,6 +27,7 @@ func Load() (Config, error) {
 		DBPoolMax: int32(envInt("DB_POOL_MAX", 10)), DefaultLocale: env("DEFAULT_LOCALE", "zh-CN"), SupportedLocales: split(env("SUPPORTED_LOCALES", "zh-CN,en")),
 		SessionCookieName: env("SESSION_COOKIE_NAME", "pcp_session"), SessionTTL: envDuration("SESSION_TTL", 30*24*time.Hour), PasswordPepper: os.Getenv("PASSWORD_PEPPER"),
 		WebAuthnRPID: env("WEBAUTHN_RP_ID", "localhost"), WebAuthnOrigins: split(env("WEBAUTHN_RP_ORIGINS", "http://localhost:3001")),
+		StorageProvider: env("OBJECT_STORAGE_PROVIDER", "filesystem"), StorageEndpoint: os.Getenv("OBJECT_STORAGE_ENDPOINT"), StorageRegion: env("OBJECT_STORAGE_REGION", "auto"), StorageBucket: env("OBJECT_STORAGE_BUCKET", "pcplatform-dev"), StorageAccessKey: os.Getenv("OBJECT_STORAGE_ACCESS_KEY"), StorageSecretKey: os.Getenv("OBJECT_STORAGE_SECRET_KEY"), StorageBasePath: env("OBJECT_STORAGE_BASE_PATH", "./data/objects"),
 	}
 	if c.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

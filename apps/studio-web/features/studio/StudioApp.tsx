@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { api, Content, Principal } from "../../lib/api";
 import { AuthPanel } from "../auth/AuthPanel";
 import { AddPasskey } from "../auth/PasskeyButton";
+import { AssetUpload } from "../assets/AssetUpload";
 import { EditorPanel } from "../editor/EditorPanel";
 import { ContentList } from "./ContentList";
 import { CreateContent } from "./CreateContent";
@@ -65,6 +66,7 @@ export function StudioApp() {
               />
             </label>
             <AddPasskey />
+            <AssetUpload workspace={user.WorkspaceID} />
             <CreateContent
               workspace={user.WorkspaceID}
               onCreated={(c) => {

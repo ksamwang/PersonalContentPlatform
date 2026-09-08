@@ -98,6 +98,10 @@ select:focus-visible,
     transform 0.15s,
     color 0.2s;
 }
+.asset-upload {
+  padding: 0 16px;
+  cursor: pointer;
+}
 .primary {
   background: var(--text);
   color: var(--bg);

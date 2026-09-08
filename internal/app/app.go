@@ -1,9 +1,14 @@
 package app
 
 import (
+	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	assetapp "github.com/ksamwang/PersonalContentPlatform/internal/asset/application"
+	assetpg "github.com/ksamwang/PersonalContentPlatform/internal/asset/infrastructure/postgres"
+	"github.com/ksamwang/PersonalContentPlatform/internal/asset/infrastructure/storagefactory"
+	assethttp "github.com/ksamwang/PersonalContentPlatform/internal/asset/transport"
 	contentapp "github.com/ksamwang/PersonalContentPlatform/internal/content/application"
 	contentpg "github.com/ksamwang/PersonalContentPlatform/internal/content/infrastructure/postgres"
 	contenthttp "github.com/ksamwang/PersonalContentPlatform/internal/content/transport"
@@ -23,6 +28,7 @@ type App struct {
 	identity  *identityhttp.HTTP
 	content   *contenthttp.HTTP
 	public    *publicationhttp.HTTP
+	asset     *assethttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -34,7 +40,12 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 	}
 	identityTransport := identityhttp.NewHTTP(sessions, passkeys, cfg.SessionCookieName, cfg.SessionTTL, cfg.Environment != "development")
 	contentService := contentapp.New(contentpg.New(db), cfg.SupportedLocales)
-	return &App{DB: db, StartedAt: time.Now().UTC(), identity: identityTransport, content: contenthttp.NewHTTP(contentService, identityTransport.RequireSession), public: publicationhttp.NewHTTP(db)}, nil
+	storage, err := storagefactory.New(context.Background(), cfg)
+	if err != nil {
+		return nil, err
+	}
+	assetService := assetapp.New(assetpg.New(db), storage)
+	return &App{DB: db, StartedAt: time.Now().UTC(), identity: identityTransport, content: contenthttp.NewHTTP(contentService, identityTransport.RequireSession), public: publicationhttp.NewHTTP(db), asset: assethttp.NewHTTP(assetService, identityTransport.RequireSession)}, nil
 }
 func (a *App) Router() http.Handler {
 	r := chi.NewRouter()
@@ -43,5 +54,6 @@ func (a *App) Router() http.Handler {
 	a.identity.Register(r)
 	a.content.Register(r)
 	a.public.Register(r)
+	a.asset.Register(r)
 	return r
 }

@@ -34,6 +34,15 @@ export type Draft = {
   body: Record<string, unknown>;
   metadata: Record<string, unknown>;
 };
+export type Asset = {
+  id: string;
+  filename: string;
+  media_type: string;
+  state: string;
+  mime: string;
+  size: number;
+  sha256: string;
+};
 export class APIError extends Error {
   constructor(
     public status: number,
@@ -105,4 +114,34 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ content_id, locale }),
     }),
+  assets: (ws: string) =>
+    request<{ items: Asset[] }>(`/v1/workspaces/${ws}/assets/`),
+  uploadAsset: async (ws: string, file: File) => {
+    const plan = await request<{
+      upload_id: string;
+      url: string;
+      headers: Record<string, string>;
+    }>(`/v1/workspaces/${ws}/assets:prepare-upload`, {
+      method: "POST",
+      body: JSON.stringify({
+        filename: file.name,
+        mime: file.type,
+        size: file.size,
+      }),
+    });
+    const uploadURL = plan.url.startsWith("http")
+      ? plan.url
+      : `/api${plan.url}`;
+    const uploaded = await fetch(uploadURL, {
+      method: "PUT",
+      headers: plan.headers,
+      body: file,
+      credentials: "include",
+    });
+    if (!uploaded.ok) throw new Error("文件上传失败");
+    return request<Asset>(`/v1/workspaces/${ws}/assets:finalize-upload`, {
+      method: "POST",
+      body: JSON.stringify({ upload_id: plan.upload_id }),
+    });
+  },
 };
