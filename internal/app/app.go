@@ -15,6 +15,9 @@ import (
 	identityapp "github.com/ksamwang/PersonalContentPlatform/internal/identity/application"
 	identitypg "github.com/ksamwang/PersonalContentPlatform/internal/identity/infrastructure/postgres"
 	identityhttp "github.com/ksamwang/PersonalContentPlatform/internal/identity/transport"
+	knowledgeapp "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/application"
+	knowledgepg "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/infrastructure/postgres"
+	knowledgehttp "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/transport"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/health"
 	publicationhttp "github.com/ksamwang/PersonalContentPlatform/internal/publication/transport"
@@ -29,6 +32,7 @@ type App struct {
 	content   *contenthttp.HTTP
 	public    *publicationhttp.HTTP
 	asset     *assethttp.HTTP
+	knowledge *knowledgehttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -45,7 +49,8 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 		return nil, err
 	}
 	assetService := assetapp.New(assetpg.New(db), storage)
-	return &App{DB: db, StartedAt: time.Now().UTC(), identity: identityTransport, content: contenthttp.NewHTTP(contentService, identityTransport.RequireSession), public: publicationhttp.NewHTTP(db), asset: assethttp.NewHTTP(assetService, identityTransport.RequireSession)}, nil
+	knowledgeService := knowledgeapp.New(knowledgepg.New(db))
+	return &App{DB: db, StartedAt: time.Now().UTC(), identity: identityTransport, content: contenthttp.NewHTTP(contentService, identityTransport.RequireSession), public: publicationhttp.NewHTTP(db), asset: assethttp.NewHTTP(assetService, identityTransport.RequireSession), knowledge: knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession)}, nil
 }
 func (a *App) Router() http.Handler {
 	r := chi.NewRouter()
@@ -55,5 +60,6 @@ func (a *App) Router() http.Handler {
 	a.content.Register(r)
 	a.public.Register(r)
 	a.asset.Register(r)
+	a.knowledge.Register(r)
 	return r
 }
