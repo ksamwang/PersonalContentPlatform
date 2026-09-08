@@ -4,11 +4,11 @@ import (
 	"context"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/database"
+	publication "github.com/ksamwang/PersonalContentPlatform/internal/publication/application"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func main() {
@@ -25,18 +25,10 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
 	slog.Info("worker started")
-	for {
-		select {
-		case <-ctx.Done():
-			slog.Info("worker stopped")
-			return
-		case <-ticker.C:
-			if err := db.Ping(ctx); err != nil {
-				slog.Warn("database ping failed", "error", err)
-			}
-		}
+	if err := publication.NewProcessor(db, "default").Run(ctx); err != nil {
+		slog.Error("worker failed", "error", err)
+		os.Exit(1)
 	}
+	slog.Info("worker stopped")
 }

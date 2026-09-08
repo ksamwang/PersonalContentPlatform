@@ -1,0 +1,13 @@
+{
+  "name": "personal-content-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:studio": "npm run dev -w studio-web",
+    "dev:public": "npm run dev -w public-web",
+    "build:web": "npm run build -w studio-web && npm run build -w public-web",
+    "typecheck": "npm run typecheck -w studio-web && npm run typecheck -w public-web"
+  }
+}

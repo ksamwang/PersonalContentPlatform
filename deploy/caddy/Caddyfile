@@ -1,4 +1,14 @@
-{$APP_DOMAIN:localhost} {
+{$PUBLIC_DOMAIN:localhost} {
     encode zstd gzip
-    reverse_proxy api:8080
+    reverse_proxy public-web:3000
+}
+
+{$STUDIO_DOMAIN:studio.localhost} {
+    encode zstd gzip
+    handle_path /api/* {
+        reverse_proxy api:8080
+    }
+    handle {
+        reverse_proxy studio-web:3001
+    }
 }

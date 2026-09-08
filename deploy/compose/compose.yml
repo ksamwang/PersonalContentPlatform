@@ -31,13 +31,32 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
+  public-web:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.web
+      args: { WEB_APP: public-web }
+    environment:
+      API_ORIGIN: http://api:8080
+      WORKSPACE_SLUG: personal
+    depends_on: [api]
+    restart: unless-stopped
+  studio-web:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.web
+      args: { WEB_APP: studio-web }
+    environment:
+      API_ORIGIN: http://api:8080
+    depends_on: [api]
+    restart: unless-stopped
   caddy:
     image: caddy:2-alpine
     ports: ["80:80", "443:443"]
     volumes:
       - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
-    depends_on: [api]
+    depends_on: [public-web, studio-web]
     restart: unless-stopped
 secrets:
   db_password:

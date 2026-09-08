@@ -4,11 +4,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	contentapp "github.com/ksamwang/PersonalContentPlatform/internal/content/application"
+	contentpg "github.com/ksamwang/PersonalContentPlatform/internal/content/infrastructure/postgres"
+	contenthttp "github.com/ksamwang/PersonalContentPlatform/internal/content/transport"
 	identityapp "github.com/ksamwang/PersonalContentPlatform/internal/identity/application"
 	identitypg "github.com/ksamwang/PersonalContentPlatform/internal/identity/infrastructure/postgres"
 	identityhttp "github.com/ksamwang/PersonalContentPlatform/internal/identity/transport"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/health"
+	publicationhttp "github.com/ksamwang/PersonalContentPlatform/internal/publication/transport"
 	"net/http"
 	"time"
 )
@@ -17,6 +21,8 @@ type App struct {
 	DB        *pgxpool.Pool
 	StartedAt time.Time
 	identity  *identityhttp.HTTP
+	content   *contenthttp.HTTP
+	public    *publicationhttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -26,12 +32,16 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{DB: db, StartedAt: time.Now().UTC(), identity: identityhttp.NewHTTP(sessions, passkeys, cfg.SessionCookieName, cfg.SessionTTL, cfg.Environment != "development")}, nil
+	identityTransport := identityhttp.NewHTTP(sessions, passkeys, cfg.SessionCookieName, cfg.SessionTTL, cfg.Environment != "development")
+	contentService := contentapp.New(contentpg.New(db), cfg.SupportedLocales)
+	return &App{DB: db, StartedAt: time.Now().UTC(), identity: identityTransport, content: contenthttp.NewHTTP(contentService, identityTransport.RequireSession), public: publicationhttp.NewHTTP(db)}, nil
 }
 func (a *App) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	health.RegisterRoutes(r, a.DB)
 	a.identity.Register(r)
+	a.content.Register(r)
+	a.public.Register(r)
 	return r
 }

@@ -1,0 +1,18 @@
+FROM node:24-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY apps/studio-web/package.json apps/studio-web/package.json
+COPY apps/public-web/package.json apps/public-web/package.json
+RUN npm ci
+COPY apps ./apps
+ARG WEB_APP
+RUN npm run build -w ${WEB_APP}
+
+FROM node:24-alpine
+WORKDIR /app
+COPY --from=build /app/package.json /app/package-lock.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps ./apps
+ARG WEB_APP
+ENV WEB_APP=${WEB_APP} NODE_ENV=production
+CMD npm run start -w ${WEB_APP}
