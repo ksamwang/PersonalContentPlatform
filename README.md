@@ -43,6 +43,14 @@ npm run dev:public
 .\scripts\verify.ps1
 ```
 
+对 `.env` 指向的开发数据库执行会自动创建并清理隔离 Workspace 的 API 冒烟测试：
+
+```powershell
+$env:PCP_INTEGRATION_TEST='1'
+$env:APP_ENV_FILE=(Resolve-Path '.env').Path
+go test ./tests/smoke -run TestCorePlatformWorkflows -v -count=1
+```
+
 ## 主要能力
 
 - 邮箱密码登录使用 Argon2id，会话使用 HttpOnly Cookie；同时支持 WebAuthn Passkey。
