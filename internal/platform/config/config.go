@@ -19,6 +19,7 @@ type Config struct {
 	StorageProvider, StorageEndpoint                    string
 	StorageRegion, StorageBucket                        string
 	StorageAccessKey, StorageSecretKey, StorageBasePath string
+	AIBaseURL, AIAPIKey, AIModel                        string
 }
 
 func Load() (Config, error) {
@@ -28,6 +29,7 @@ func Load() (Config, error) {
 		SessionCookieName: env("SESSION_COOKIE_NAME", "pcp_session"), SessionTTL: envDuration("SESSION_TTL", 30*24*time.Hour), PasswordPepper: os.Getenv("PASSWORD_PEPPER"),
 		WebAuthnRPID: env("WEBAUTHN_RP_ID", "localhost"), WebAuthnOrigins: split(env("WEBAUTHN_RP_ORIGINS", "http://localhost:3001")),
 		StorageProvider: env("OBJECT_STORAGE_PROVIDER", "filesystem"), StorageEndpoint: os.Getenv("OBJECT_STORAGE_ENDPOINT"), StorageRegion: env("OBJECT_STORAGE_REGION", "auto"), StorageBucket: env("OBJECT_STORAGE_BUCKET", "pcplatform-dev"), StorageAccessKey: os.Getenv("OBJECT_STORAGE_ACCESS_KEY"), StorageSecretKey: os.Getenv("OBJECT_STORAGE_SECRET_KEY"), StorageBasePath: env("OBJECT_STORAGE_BASE_PATH", "./data/objects"),
+		AIBaseURL: strings.TrimRight(os.Getenv("AI_BASE_URL"), "/"), AIAPIKey: os.Getenv("AI_API_KEY"), AIModel: os.Getenv("AI_MODEL"),
 	}
 	if c.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

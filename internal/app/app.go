@@ -5,6 +5,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	aiapp "github.com/ksamwang/PersonalContentPlatform/internal/ai/application"
+	openai "github.com/ksamwang/PersonalContentPlatform/internal/ai/infrastructure/openai"
+	aihttp "github.com/ksamwang/PersonalContentPlatform/internal/ai/transport"
 	assetapp "github.com/ksamwang/PersonalContentPlatform/internal/asset/application"
 	assetpg "github.com/ksamwang/PersonalContentPlatform/internal/asset/infrastructure/postgres"
 	"github.com/ksamwang/PersonalContentPlatform/internal/asset/infrastructure/storagefactory"
@@ -33,6 +36,7 @@ type App struct {
 	public    *publicationhttp.HTTP
 	asset     *assethttp.HTTP
 	knowledge *knowledgehttp.HTTP
+	ai        *aihttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -50,7 +54,8 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 	}
 	assetService := assetapp.New(assetpg.New(db), storage)
 	knowledgeService := knowledgeapp.New(knowledgepg.New(db))
-	return &App{DB: db, StartedAt: time.Now().UTC(), identity: identityTransport, content: contenthttp.NewHTTP(contentService, identityTransport.RequireSession), public: publicationhttp.NewHTTP(db), asset: assethttp.NewHTTP(assetService, identityTransport.RequireSession), knowledge: knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession)}, nil
+	aiService := aiapp.New(db, openai.New(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel))
+	return &App{DB: db, StartedAt: time.Now().UTC(), identity: identityTransport, content: contenthttp.NewHTTP(contentService, identityTransport.RequireSession), public: publicationhttp.NewHTTP(db), asset: assethttp.NewHTTP(assetService, identityTransport.RequireSession), knowledge: knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession), ai: aihttp.NewHTTP(aiService, identityTransport.RequireSession)}, nil
 }
 func (a *App) Router() http.Handler {
 	r := chi.NewRouter()
@@ -61,5 +66,6 @@ func (a *App) Router() http.Handler {
 	a.public.Register(r)
 	a.asset.Register(r)
 	a.knowledge.Register(r)
+	a.ai.Register(r)
 	return r
 }
