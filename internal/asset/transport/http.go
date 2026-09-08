@@ -24,10 +24,10 @@ func (h *HTTP) Register(r chi.Router) {
 		r.Route("/v1/workspaces/{workspaceID}/assets", func(r chi.Router) {
 			r.Use(scope)
 			r.Get("/", h.list)
-			r.Post(":prepare-upload", h.prepare)
 			r.Put("/uploads/{uploadID}", h.upload)
-			r.Post(":finalize-upload", h.finalize)
 		})
+		r.With(scope).Post("/v1/workspaces/{workspaceID}/assets:prepare-upload", h.prepare)
+		r.With(scope).Post("/v1/workspaces/{workspaceID}/assets:finalize-upload", h.finalize)
 	})
 }
 func scope(next http.Handler) http.Handler {

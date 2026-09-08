@@ -23,14 +23,11 @@ func NewHTTP(exports *application.ExportService, webhooks *application.WebhookSe
 func (h *HTTP) Register(router chi.Router) {
 	router.Group(func(router chi.Router) {
 		router.Use(h.auth)
-		router.Route("/v1/workspaces/{workspaceID}", func(router chi.Router) {
-			router.Use(scopeWorkspace)
-			router.Get("/exports/manifest.json", h.exportManifest)
-			router.Get("/webhooks", h.listWebhooks)
-			router.Post("/webhooks", h.createWebhook)
-			router.Patch("/webhooks/{endpointID}", h.setWebhookEnabled)
-			router.Delete("/webhooks/{endpointID}", h.deleteWebhook)
-		})
+		router.With(scopeWorkspace).Get("/v1/workspaces/{workspaceID}/exports/manifest.json", h.exportManifest)
+		router.With(scopeWorkspace).Get("/v1/workspaces/{workspaceID}/webhooks", h.listWebhooks)
+		router.With(scopeWorkspace).Post("/v1/workspaces/{workspaceID}/webhooks", h.createWebhook)
+		router.With(scopeWorkspace).Patch("/v1/workspaces/{workspaceID}/webhooks/{endpointID}", h.setWebhookEnabled)
+		router.With(scopeWorkspace).Delete("/v1/workspaces/{workspaceID}/webhooks/{endpointID}", h.deleteWebhook)
 	})
 }
 
