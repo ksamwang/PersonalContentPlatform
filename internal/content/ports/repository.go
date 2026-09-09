@@ -12,6 +12,8 @@ type Repository interface {
 	Create(context.Context, uuid.UUID, uuid.UUID, domain.Type, string, string, string) (domain.Content, error)
 	List(context.Context, uuid.UUID, string, string, int) ([]domain.Content, error)
 	Get(context.Context, uuid.UUID, uuid.UUID) (domain.Content, error)
+	UpdateProperties(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, domain.Visibility) error
+	ReadinessSource(context.Context, uuid.UUID, uuid.UUID) (domain.ReadinessSource, error)
 	GetDraft(context.Context, uuid.UUID, uuid.UUID) (domain.Draft, error)
 	SaveDraft(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, int, string, string, json.RawMessage, json.RawMessage) (domain.Draft, error)
 	SealRevision(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, int) (domain.Revision, error)

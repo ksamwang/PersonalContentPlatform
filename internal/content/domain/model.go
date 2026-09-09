@@ -81,3 +81,23 @@ type PreviewToken struct {
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
+
+type ReadinessIssue struct {
+	Code     string `json:"code"`
+	Message  string `json:"message"`
+	Severity string `json:"severity"`
+}
+
+type Readiness struct {
+	Ready  bool             `json:"ready"`
+	Issues []ReadinessIssue `json:"issues"`
+}
+
+type ReadinessSource struct {
+	Type     Type
+	Slug     string
+	Title    string
+	Summary  string
+	Body     json.RawMessage
+	Metadata json.RawMessage
+}

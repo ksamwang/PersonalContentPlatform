@@ -97,6 +97,29 @@ func (r *Repository) Get(ctx context.Context, workspaceID, contentID uuid.UUID) 
 	}
 	return result, nil
 }
+func (r *Repository) UpdateProperties(ctx context.Context, workspaceID, contentID, localizationID uuid.UUID, slug string, visibility domain.Visibility) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	tag, err := tx.Exec(ctx, `UPDATE content_localizations SET slug=$1,updated_at=now() WHERE id=$2 AND content_id=$3 AND workspace_id=$4 AND deleted_at IS NULL`, slug, localizationID, contentID, workspaceID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	if _, err = tx.Exec(ctx, `UPDATE contents SET visibility=$1,updated_at=now() WHERE object_id=$2 AND workspace_id=$3`, visibility, contentID, workspaceID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+func (r *Repository) ReadinessSource(ctx context.Context, workspaceID, localizationID uuid.UUID) (domain.ReadinessSource, error) {
+	var source domain.ReadinessSource
+	err := r.db.QueryRow(ctx, `SELECT c.type,l.slug,r.title,r.summary,r.body_json,r.metadata_json FROM content_localizations l JOIN contents c ON c.object_id=l.content_id JOIN content_revisions r ON r.id=l.current_revision_id WHERE l.id=$1 AND l.workspace_id=$2 AND l.deleted_at IS NULL`, localizationID, workspaceID).Scan(&source.Type, &source.Slug, &source.Title, &source.Summary, &source.Body, &source.Metadata)
+	return source, err
+}
 func (r *Repository) GetDraft(ctx context.Context, workspaceID, localizationID uuid.UUID) (domain.Draft, error) {
 	var d domain.Draft
 	err := r.db.QueryRow(ctx, `SELECT localization_id,version,title,summary,body_json,metadata_json,updated_at FROM draft_buffers WHERE workspace_id=$1 AND localization_id=$2`, workspaceID, localizationID).Scan(&d.LocalizationID, &d.Version, &d.Title, &d.Summary, &d.Body, &d.Metadata, &d.UpdatedAt)

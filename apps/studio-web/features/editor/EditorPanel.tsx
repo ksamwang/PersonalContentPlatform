@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
-import { Eye, History, Save, Send } from "lucide-react";
-import { api, Content, Draft } from "../../lib/api";
+import { Eye, History, PanelRight, Save, Send } from "lucide-react";
+import { api, Content, Draft, Readiness } from "../../lib/api";
+import { ContentPropertiesPanel } from "./ContentPropertiesPanel";
 import { EditorToolbar } from "./EditorToolbar";
 import { RevisionPanel } from "./RevisionPanel";
 import { SlashCommandMenu } from "./SlashCommandMenu";
@@ -33,7 +34,9 @@ export function EditorPanel({
     [revisionRefresh,setRevisionRefresh]=useState(0),
     [focusMode,setFocusMode]=useState(false),
     [slashOpen,setSlashOpen]=useState(false),
-    [characterCount,setCharacterCount]=useState(0);
+    [characterCount,setCharacterCount]=useState(0),
+    [propertiesOpen,setPropertiesOpen]=useState(false),
+    [readiness,setReadiness]=useState<Readiness|null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef<Draft | null>(null);
   const titleRef = useRef("");
@@ -135,6 +138,9 @@ export function EditorPanel({
       if (!saved) return;
       await api.seal(workspace, localization.id, saved.version);
       setRevisionRefresh(v=>v+1);
+      const check=await api.readiness(workspace,localization.id);
+      setReadiness(check);
+      if(!check.ready){setPropertiesOpen(true);setStatus("请先处理发布前检查中的必填项");return}
       await api.ready(workspace, localization.id);
       await api.publish(workspace, content.id, localization.locale);
       setStatus("已进入发布队列");
@@ -157,6 +163,8 @@ export function EditorPanel({
     catch(err){setStatus(err instanceof Error?err.message:"预览生成失败")}finally{setBusy(false)}
   }
   function applyRestoredDraft(next:Draft){setDraft(next);draftRef.current=next;setTitle(next.title);titleRef.current=next.title;setSummary(next.summary);summaryRef.current=next.summary;editor?.commands.setContent(next.body,{emitUpdate:false});setStatus("旧版本已恢复到草稿")}
+  function updateMetadata(metadata:Record<string,unknown>){if(!draftRef.current)return;const next={...draftRef.current,metadata};setDraft(next);draftRef.current=next;scheduleSave()}
+  async function openProperties(){setPropertiesOpen(true);try{setReadiness(await api.readiness(workspace,localization.id))}catch{setReadiness(null)}}
   async function waitUntilPublished() {
     for (let attempt = 0; attempt < 20; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -203,6 +211,7 @@ export function EditorPanel({
           <span className="save-state" aria-live="polite">
             {status}
           </span>
+          <button className="secondary" onClick={()=>void openProperties()}><PanelRight aria-hidden size={17}/>属性</button>
           <button className="secondary" onClick={()=>setHistoryOpen(v=>!v)}><History aria-hidden size={17}/>版本</button>
           <button className="secondary" disabled={busy||!canEdit} onClick={() => void preview()}><Eye aria-hidden size={17}/>预览</button>
           <button className="secondary" disabled={busy||!canEdit} onClick={() => void save()}>
@@ -234,6 +243,7 @@ export function EditorPanel({
       </div>
       <footer className="editor-stats"><span>{characterCount.toLocaleString("zh-CN")} 字</span><span>约 {Math.max(1,Math.ceil(characterCount/400))} 分钟阅读</span><span>输入 / 可快速插入内容</span></footer>
       {historyOpen&&<RevisionPanel workspace={workspace} localizationID={localization.id} draftVersion={draft.version} canEdit={canEdit} refresh={revisionRefresh} onClose={()=>setHistoryOpen(false)} onRestored={applyRestoredDraft}/>}
+      {propertiesOpen&&<ContentPropertiesPanel workspace={workspace} content={content} localization={localization} draft={draft} canEdit={canEdit} readiness={readiness} onMetadataChange={updateMetadata} onSaved={onChanged} onClose={()=>setPropertiesOpen(false)}/>}
     </section>
   );
 }

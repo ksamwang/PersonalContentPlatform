@@ -20,8 +20,11 @@ export type Localization = {
   locale: string;
   state: string;
   slug: string;
+  translation_status: string;
   current_revision?: Revision;
 };
+export type ReadinessIssue = { code:string; message:string; severity:"error"|"warning" };
+export type Readiness = { ready:boolean; issues:ReadinessIssue[] };
 export type Content = {
   id: string;
   type: "article" | "note" | "page";
@@ -115,6 +118,8 @@ export const api = {
     requestItems<Content>(`/v1/workspaces/${ws}/contents`),
   content: (ws: string, id: string) =>
     request<Content>(`/v1/workspaces/${ws}/contents/${id}`),
+  updateContentProperties: (ws:string,id:string,value:{localization_id:string;slug:string;visibility:string}) =>
+    request<void>(`/v1/workspaces/${ws}/contents/${id}`,{method:"PATCH",body:JSON.stringify(value)}),
   search: (ws: string, q: string) =>
     requestItems<Content>(
       `/v1/workspaces/${ws}/search?q=${encodeURIComponent(q)}`,
@@ -146,6 +151,7 @@ export const api = {
     request<void>(`/v1/workspaces/${ws}/localizations/${id}:mark-ready`, {
       method: "POST",
     }),
+  readiness: (ws:string,id:string) => request<Readiness>(`/v1/workspaces/${ws}/localizations/${id}/readiness`),
   publish: (ws: string, content_id: string, locale: string) =>
     request<{ publication_id: string }>(`/v1/workspaces/${ws}/publications`, {
       method: "POST",

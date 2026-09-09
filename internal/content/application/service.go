@@ -65,6 +65,78 @@ func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, locale, state
 func (s *Service) Get(ctx context.Context, workspaceID, contentID uuid.UUID) (domain.Content, error) {
 	return s.repo.Get(ctx, workspaceID, contentID)
 }
+func (s *Service) UpdateProperties(ctx context.Context, workspaceID, contentID, localizationID uuid.UUID, slug string, visibility domain.Visibility) error {
+	slug = strings.ToLower(strings.TrimSpace(slug))
+	if !slugPattern.MatchString(slug) {
+		return fmt.Errorf("slug must contain lowercase letters, numbers and hyphens")
+	}
+	if visibility != domain.Private && visibility != domain.Unlisted && visibility != domain.Public {
+		return fmt.Errorf("unsupported visibility")
+	}
+	return s.repo.UpdateProperties(ctx, workspaceID, contentID, localizationID, slug, visibility)
+}
+func (s *Service) Readiness(ctx context.Context, workspaceID, localizationID uuid.UUID) (domain.Readiness, error) {
+	source, err := s.repo.ReadinessSource(ctx, workspaceID, localizationID)
+	if err != nil {
+		return domain.Readiness{}, err
+	}
+	issues := make([]domain.ReadinessIssue, 0)
+	if strings.TrimSpace(source.Title) == "" {
+		issues = append(issues, domain.ReadinessIssue{Code: "title_required", Message: "请填写标题", Severity: "error"})
+	}
+	if !slugPattern.MatchString(source.Slug) {
+		issues = append(issues, domain.ReadinessIssue{Code: "slug_invalid", Message: "固定链接格式无效", Severity: "error"})
+	}
+	if source.Type == domain.TypeArticle && strings.TrimSpace(source.Summary) == "" {
+		issues = append(issues, domain.ReadinessIssue{Code: "summary_recommended", Message: "文章建议填写摘要", Severity: "warning"})
+	}
+	var metadata map[string]any
+	_ = json.Unmarshal(source.Metadata, &metadata)
+	cover, _ := metadata["cover_asset_id"].(string)
+	if source.Type == domain.TypeArticle && strings.TrimSpace(cover) == "" {
+		issues = append(issues, domain.ReadinessIssue{Code: "cover_recommended", Message: "文章建议设置封面", Severity: "warning"})
+	}
+	if hasImageWithoutAlt(source.Body) {
+		issues = append(issues, domain.ReadinessIssue{Code: "image_alt_recommended", Message: "正文中有图片缺少替代文字", Severity: "warning"})
+	}
+	ready := true
+	for _, issue := range issues {
+		if issue.Severity == "error" {
+			ready = false
+		}
+	}
+	return domain.Readiness{Ready: ready, Issues: issues}, nil
+}
+func hasImageWithoutAlt(raw json.RawMessage) bool {
+	var value any
+	if json.Unmarshal(raw, &value) != nil {
+		return false
+	}
+	var visit func(any) bool
+	visit = func(current any) bool {
+		switch node := current.(type) {
+		case map[string]any:
+			if node["type"] == "image" {
+				attrs, _ := node["attrs"].(map[string]any)
+				alt, _ := attrs["alt"].(string)
+				return strings.TrimSpace(alt) == ""
+			}
+			for _, child := range node {
+				if visit(child) {
+					return true
+				}
+			}
+		case []any:
+			for _, child := range node {
+				if visit(child) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	return visit(value)
+}
 func (s *Service) GetDraft(ctx context.Context, workspaceID, localizationID uuid.UUID) (domain.Draft, error) {
 	return s.repo.GetDraft(ctx, workspaceID, localizationID)
 }
@@ -78,6 +150,13 @@ func (s *Service) Seal(ctx context.Context, workspaceID, userID, localizationID 
 	return s.repo.SealRevision(ctx, workspaceID, userID, localizationID, expected)
 }
 func (s *Service) MarkReady(ctx context.Context, workspaceID, localizationID uuid.UUID) error {
+	check, err := s.Readiness(ctx, workspaceID, localizationID)
+	if err != nil {
+		return err
+	}
+	if !check.Ready {
+		return fmt.Errorf("localization has unresolved readiness errors")
+	}
 	return s.repo.MarkReady(ctx, workspaceID, localizationID)
 }
 func (s *Service) Publish(ctx context.Context, workspaceID, userID, contentID uuid.UUID, locale string, targetID uuid.UUID) (uuid.UUID, error) {
