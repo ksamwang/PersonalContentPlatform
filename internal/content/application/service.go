@@ -2,15 +2,20 @@ package application
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/ksamwang/PersonalContentPlatform/internal/content/document"
 	"github.com/ksamwang/PersonalContentPlatform/internal/content/domain"
 	"github.com/ksamwang/PersonalContentPlatform/internal/content/ports"
 	settingsports "github.com/ksamwang/PersonalContentPlatform/internal/settings/ports"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var ErrConflict = errors.New("version conflict")
@@ -89,4 +94,45 @@ func (s *Service) Search(ctx context.Context, workspaceID uuid.UUID, locale, que
 		limit = 30
 	}
 	return s.repo.Search(ctx, workspaceID, locale, strings.TrimSpace(query), limit)
+}
+
+func (s *Service) ListRevisions(ctx context.Context, workspaceID, localizationID uuid.UUID, limit int) ([]domain.Revision, error) {
+	if limit < 1 || limit > 100 {
+		limit = 30
+	}
+	return s.repo.ListRevisions(ctx, workspaceID, localizationID, limit)
+}
+func (s *Service) GetRevision(ctx context.Context, workspaceID, localizationID, revisionID uuid.UUID) (domain.Revision, error) {
+	return s.repo.GetRevision(ctx, workspaceID, localizationID, revisionID)
+}
+func (s *Service) RestoreRevision(ctx context.Context, workspaceID, userID, localizationID, revisionID uuid.UUID, expectedVersion int) (domain.Draft, error) {
+	if expectedVersion < 1 {
+		return domain.Draft{}, fmt.Errorf("draft version is required")
+	}
+	return s.repo.RestoreRevision(ctx, workspaceID, userID, localizationID, revisionID, expectedVersion)
+}
+func (s *Service) CreatePreview(ctx context.Context, workspaceID, userID, localizationID uuid.UUID) (domain.PreviewToken, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return domain.PreviewToken{}, err
+	}
+	hash := sha256.Sum256(raw)
+	expiresAt := time.Now().UTC().Add(30 * time.Minute)
+	if err := s.repo.CreatePreview(ctx, workspaceID, userID, localizationID, hash[:], expiresAt); err != nil {
+		return domain.PreviewToken{}, err
+	}
+	return domain.PreviewToken{Token: base64.RawURLEncoding.EncodeToString(raw), ExpiresAt: expiresAt}, nil
+}
+func (s *Service) GetPreview(ctx context.Context, token string) (domain.Preview, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil || len(raw) != 32 {
+		return domain.Preview{}, fmt.Errorf("invalid preview token")
+	}
+	hash := sha256.Sum256(raw)
+	preview, err := s.repo.GetPreview(ctx, hash[:])
+	if err != nil {
+		return domain.Preview{}, err
+	}
+	preview.HTML = document.HTML(preview.Body)
+	return preview, nil
 }

@@ -32,6 +32,9 @@ func (h *HTTP) getDraft(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTP) saveDraft(w http.ResponseWriter, r *http.Request) {
+	if !editorRequired(w, r) {
+		return
+	}
 	id, ok := parseID(w, r, "localizationID")
 	if !ok {
 		return
@@ -60,6 +63,9 @@ type sealInput struct {
 }
 
 func (h *HTTP) sealRevision(w http.ResponseWriter, r *http.Request) {
+	if !editorRequired(w, r) {
+		return
+	}
 	id, ok := parseID(w, r, "localizationID")
 	if !ok {
 		return
@@ -82,6 +88,9 @@ func (h *HTTP) sealRevision(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, 201, revision)
 }
 func (h *HTTP) markReady(w http.ResponseWriter, r *http.Request) {
+	if !editorRequired(w, r) {
+		return
+	}
 	id, ok := parseID(w, r, "localizationID")
 	if !ok {
 		return

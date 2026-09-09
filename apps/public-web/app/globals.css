@@ -167,6 +167,11 @@ footer {
 .article-shell {
   padding: clamp(60px, 9vw, 130px) 20px;
 }
+.preview-banner { position:sticky; top:0; z-index:10; min-height:58px; padding:10px clamp(20px,5vw,72px); display:flex; align-items:center; justify-content:space-between; gap:20px; background:var(--ink); color:var(--paper); }
+.preview-banner strong { color:#ff82b5; }
+.preview-banner span { font-size:.82rem; }
+.preview-shell { padding-top:clamp(48px,7vw,90px); }
+@media(max-width:640px){.preview-banner{align-items:flex-start;flex-direction:column;gap:2px}}
 .article-shell article {
   max-width: 780px;
   margin: auto;

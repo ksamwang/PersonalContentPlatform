@@ -18,6 +18,7 @@ func NewHTTP(service *application.Service, auth func(http.Handler) http.Handler)
 	return &HTTP{service: service, auth: auth}
 }
 func (h *HTTP) Register(r chi.Router) {
+	r.Get("/v1/previews/{token}", h.preview)
 	r.Group(func(r chi.Router) {
 		r.Use(h.auth)
 		r.Route("/v1/workspaces/{workspaceID}", func(r chi.Router) {
@@ -28,6 +29,10 @@ func (h *HTTP) Register(r chi.Router) {
 			r.Put("/localizations/{localizationID}/draft", h.saveDraft)
 			r.Get("/localizations/{localizationID}/draft", h.getDraft)
 			r.Post("/localizations/{localizationID}/revisions", h.sealRevision)
+			r.Get("/localizations/{localizationID}/revisions", h.listRevisions)
+			r.Get("/localizations/{localizationID}/revisions/{revisionID}", h.getRevision)
+			r.Post("/localizations/{localizationID}/revisions/{revisionID}:restore", h.restoreRevision)
+			r.Post("/localizations/{localizationID}/preview", h.createPreview)
 			r.Post("/localizations/{localizationID}:mark-ready", h.markReady)
 			r.Post("/publications", h.publish)
 			r.Get("/search", h.search)

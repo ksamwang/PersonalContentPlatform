@@ -2,25 +2,33 @@
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Bold, Heading2, Italic, List, Quote, Save, Send } from "lucide-react";
+import { Bold, Eye, Heading2, History, Italic, List, Quote, Save, Send } from "lucide-react";
 import { api, Content, Draft } from "../../lib/api";
+import { RevisionPanel } from "./RevisionPanel";
 export function EditorPanel({
   workspace,
   content,
   onChanged,
+  role,
+  publicSite,
 }: {
   workspace: string;
   content: Content;
   onChanged: () => void;
+  role: string;
+  publicSite: string;
 }) {
   const localization = content.localizations[0];
+  const canEdit = role === "owner" || role === "editor";
   const [draft, setDraft] = useState<Draft | null>(null),
     [title, setTitle] = useState(""),
     [summary, setSummary] = useState(""),
     [status, setStatus] = useState("加载中"),
     [busy, setBusy] = useState(false),
     [loadError, setLoadError] = useState(""),
-    [reloadToken, setReloadToken] = useState(0);
+    [reloadToken, setReloadToken] = useState(0),
+    [historyOpen,setHistoryOpen]=useState(false),
+    [revisionRefresh,setRevisionRefresh]=useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef<Draft | null>(null);
   const titleRef = useRef("");
@@ -32,8 +40,10 @@ export function EditorPanel({
     extensions: [StarterKit],
     content: "",
     immediatelyRender: false,
+    editable: canEdit,
     onUpdate: () => scheduleSave(),
   });
+  useEffect(()=>{editor?.setEditable(canEdit)},[editor,canEdit]);
   useEffect(() => {
     let active = true;
     setDraft(null);
@@ -63,6 +73,7 @@ export function EditorPanel({
     };
   }, [workspace, localization.id, editor, reloadToken]);
   function scheduleSave() {
+    if (!canEdit) return;
     setStatus("等待保存");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void save(), 900);
@@ -92,7 +103,7 @@ export function EditorPanel({
     }
   }
   function save() {
-    if (!draftRef.current || !editor) return Promise.resolve(null);
+    if (!canEdit || !draftRef.current || !editor) return Promise.resolve(null);
     const targetLocalizationID = localization.id;
     const values = {
       title: titleRef.current,
@@ -112,6 +123,7 @@ export function EditorPanel({
       const saved = await save();
       if (!saved) return;
       await api.seal(workspace, localization.id, saved.version);
+      setRevisionRefresh(v=>v+1);
       await api.ready(workspace, localization.id);
       await api.publish(workspace, content.id, localization.locale);
       setStatus("已进入发布队列");
@@ -128,6 +140,12 @@ export function EditorPanel({
       setBusy(false);
     }
   }
+  async function preview(){
+    setBusy(true); if(timer.current)clearTimeout(timer.current);
+    try{const saved=await save();if(!saved)return;const token=await api.preview(workspace,localization.id);window.open(`${publicSite.replace(/\/$/,"")}/preview/${token.token}`,"_blank","noopener,noreferrer");setStatus("预览链接已生成，30 分钟内有效")}
+    catch(err){setStatus(err instanceof Error?err.message:"预览生成失败")}finally{setBusy(false)}
+  }
+  function applyRestoredDraft(next:Draft){setDraft(next);draftRef.current=next;setTitle(next.title);titleRef.current=next.title;setSummary(next.summary);summaryRef.current=next.summary;editor?.commands.setContent(next.body,{emitUpdate:false});setStatus("旧版本已恢复到草稿")}
   async function waitUntilPublished() {
     for (let attempt = 0; attempt < 20; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -162,6 +180,7 @@ export function EditorPanel({
             className="title-input"
             aria-label="内容标题"
             value={title}
+            disabled={!canEdit}
             onChange={(e) => {
               setTitle(e.target.value);
               titleRef.current = e.target.value;
@@ -173,11 +192,13 @@ export function EditorPanel({
           <span className="save-state" aria-live="polite">
             {status}
           </span>
-          <button className="secondary" disabled={busy} onClick={() => void save()}>
+          <button className="secondary" onClick={()=>setHistoryOpen(v=>!v)}><History aria-hidden size={17}/>版本</button>
+          <button className="secondary" disabled={busy||!canEdit} onClick={() => void preview()}><Eye aria-hidden size={17}/>预览</button>
+          <button className="secondary" disabled={busy||!canEdit} onClick={() => void save()}>
             <Save aria-hidden size={17} />
             保存草稿
           </button>
-          <button className="primary compact" disabled={busy} onClick={publish}>
+          <button className="primary compact" disabled={busy||!canEdit} onClick={publish}>
             <Send aria-hidden size={17} />
             {busy ? "发布中" : "发布"}
           </button>
@@ -188,6 +209,7 @@ export function EditorPanel({
         aria-label="内容摘要"
         placeholder="添加一段简洁摘要…"
         value={summary}
+        disabled={!canEdit}
         onChange={(e) => {
           setSummary(e.target.value);
           summaryRef.current = e.target.value;
@@ -232,6 +254,7 @@ export function EditorPanel({
         </button>
       </div>
       <EditorContent editor={editor} className="prose-editor" />
+      {historyOpen&&<RevisionPanel workspace={workspace} localizationID={localization.id} draftVersion={draft.version} canEdit={canEdit} refresh={revisionRefresh} onClose={()=>setHistoryOpen(false)} onRestored={applyRestoredDraft}/>}
     </section>
   );
 }

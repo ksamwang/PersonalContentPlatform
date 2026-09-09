@@ -13,6 +13,9 @@ type publicationInput struct {
 }
 
 func (h *HTTP) publish(w http.ResponseWriter, r *http.Request) {
+	if !editorRequired(w, r) {
+		return
+	}
 	var input publicationInput
 	if err := httpx.Decode(w, r, &input); err != nil {
 		httpx.Error(w, 400, "invalid_request", err.Error())

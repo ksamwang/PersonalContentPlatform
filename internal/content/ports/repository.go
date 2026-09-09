@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/ksamwang/PersonalContentPlatform/internal/content/domain"
+	"time"
 )
 
 type Repository interface {
@@ -17,4 +18,9 @@ type Repository interface {
 	MarkReady(context.Context, uuid.UUID, uuid.UUID) error
 	Publish(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, uuid.UUID, string) (uuid.UUID, error)
 	Search(context.Context, uuid.UUID, string, string, int) ([]domain.Content, error)
+	ListRevisions(context.Context, uuid.UUID, uuid.UUID, int) ([]domain.Revision, error)
+	GetRevision(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (domain.Revision, error)
+	RestoreRevision(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID, int) (domain.Draft, error)
+	CreatePreview(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, []byte, time.Time) error
+	GetPreview(context.Context, []byte) (domain.Preview, error)
 }

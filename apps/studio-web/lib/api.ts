@@ -11,6 +11,9 @@ export type Revision = {
   title: string;
   summary: string;
   body: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  content_hash: string;
+  created_at: string;
 };
 export type Localization = {
   id: string;
@@ -200,4 +203,8 @@ export const api = {
   addCollectionItem: (ws:string,sectionID:string,objectID:string) => request<CollectionItem>(`/v1/workspaces/${ws}/collection-sections/${sectionID}/items`,{method:"POST",body:JSON.stringify({object_id:objectID})}),
   moveCollectionItem: (ws:string,itemID:string,direction:-1|1) => request<void>(`/v1/workspaces/${ws}/collection-items/${itemID}:move`,{method:"POST",body:JSON.stringify({direction})}),
   removeCollectionItem: (ws:string,itemID:string) => request<void>(`/v1/workspaces/${ws}/collection-items/${itemID}`,{method:"DELETE"}),
+  revisions: (ws:string,localizationID:string) => requestItems<Revision>(`/v1/workspaces/${ws}/localizations/${localizationID}/revisions`),
+  revision: (ws:string,localizationID:string,revisionID:string) => request<Revision>(`/v1/workspaces/${ws}/localizations/${localizationID}/revisions/${revisionID}`),
+  restoreRevision: (ws:string,localizationID:string,revisionID:string,version:number) => request<Draft>(`/v1/workspaces/${ws}/localizations/${localizationID}/revisions/${revisionID}:restore`,{method:"POST",body:JSON.stringify({version})}),
+  preview: (ws:string,localizationID:string) => request<{token:string;expires_at:string}>(`/v1/workspaces/${ws}/localizations/${localizationID}/preview`,{method:"POST"}),
 };

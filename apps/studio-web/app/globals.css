@@ -641,6 +641,17 @@ select:focus-visible,
   min-height: 45dvh;
   outline: 0;
 }
+.revision-panel { position:fixed; z-index:60; top:0; right:0; width:min(430px,100vw); height:100dvh; overflow:auto; padding:22px; border-left:1px solid var(--border); background:var(--surface); box-shadow:-18px 0 45px rgba(20,15,18,.12); }
+.revision-panel>header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+.revision-panel>header>div { display:flex; align-items:center; gap:12px; }
+.revision-panel h2 { margin:0; font-size:1.25rem; }
+.revision-panel header p,.revision-loading { margin:0; color:var(--muted); }
+.revision-panel ol { list-style:none; margin:0; padding:0; }
+.revision-panel li { display:grid; gap:12px; padding:18px 0; border-bottom:1px solid var(--border); }
+.revision-panel li>div { display:grid; gap:4px; }
+.revision-panel li span,.revision-panel li p { color:var(--muted); font-size:.82rem; margin:0; }
+.revision-panel li button { justify-self:start; }
+.revision-loading { padding:28px 0; }
 .prose-editor h2 {
   font-size: 2rem;
   line-height: 1.25;

@@ -15,6 +15,9 @@ type createInput struct {
 }
 
 func (h *HTTP) create(w http.ResponseWriter, r *http.Request) {
+	if !editorRequired(w, r) {
+		return
+	}
 	var input createInput
 	if err := httpx.Decode(w, r, &input); err != nil {
 		httpx.Error(w, 400, "invalid_request", err.Error())

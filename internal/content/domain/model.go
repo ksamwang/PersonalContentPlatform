@@ -65,3 +65,19 @@ type Draft struct {
 	Metadata       json.RawMessage `json:"metadata"`
 	UpdatedAt      time.Time       `json:"updated_at"`
 }
+
+type Preview struct {
+	Type      Type            `json:"type"`
+	Locale    string          `json:"locale"`
+	Title     string          `json:"title"`
+	Summary   string          `json:"summary"`
+	Body      json.RawMessage `json:"-"`
+	Metadata  json.RawMessage `json:"metadata"`
+	HTML      string          `json:"html"`
+	ExpiresAt time.Time       `json:"expires_at"`
+}
+
+type PreviewToken struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}

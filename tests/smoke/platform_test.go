@@ -91,6 +91,36 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	client.json(http.MethodPost, workspaceBase+"/localizations/"+localizationID.String()+":mark-ready", nil, nil, http.StatusNoContent)
 	client.json(http.MethodPost, workspaceBase+"/publications", map[string]any{"content_id": content.ID, "locale": "zh-CN"}, &map[string]any{}, http.StatusAccepted)
 	waitForPublishedPage(t, client.base, fixture.workspace, "zh-CN", "article", "smoke-test")
+	var revisions struct {
+		Items []contentdomain.Revision `json:"items"`
+	}
+	client.json(http.MethodGet, workspaceBase+"/localizations/"+localizationID.String()+"/revisions", nil, &revisions, http.StatusOK)
+	if len(revisions.Items) != 2 || revisions.Items[0].ID != revision.ID || revisions.Items[1].Seq != 1 {
+		t.Fatalf("unexpected revision history: %#v", revisions.Items)
+	}
+	var revisionDetail contentdomain.Revision
+	client.json(http.MethodGet, workspaceBase+"/localizations/"+localizationID.String()+"/revisions/"+revision.ID.String(), nil, &revisionDetail, http.StatusOK)
+	if revisionDetail.ContentHash == "" {
+		t.Fatal("revision detail did not include its immutable hash")
+	}
+	newerBody := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Temporary newer body"}]}]}`)
+	client.json(http.MethodPut, workspaceBase+"/localizations/"+localizationID.String()+"/draft", map[string]any{
+		"version": draft.Version, "title": "Temporary title", "summary": "Temporary summary", "body": newerBody, "metadata": json.RawMessage(`{}`),
+	}, &draft, http.StatusOK)
+	client.json(http.MethodPost, workspaceBase+"/localizations/"+localizationID.String()+"/revisions/"+revision.ID.String()+":restore", map[string]any{"version": draft.Version}, &draft, http.StatusOK)
+	if draft.Title != "Smoke Test" || !strings.Contains(string(draft.Body), "Smoke body") {
+		t.Fatalf("revision was not restored into the draft: %#v", draft)
+	}
+	var previewToken contentdomain.PreviewToken
+	client.json(http.MethodPost, workspaceBase+"/localizations/"+localizationID.String()+"/preview", nil, &previewToken, http.StatusCreated)
+	if len(previewToken.Token) < 40 {
+		t.Fatalf("preview token is unexpectedly weak: %q", previewToken.Token)
+	}
+	var preview contentdomain.Preview
+	client.json(http.MethodGet, "/v1/previews/"+previewToken.Token, nil, &preview, http.StatusOK)
+	if preview.Title != "Smoke Test" || !strings.Contains(preview.HTML, "Smoke body") {
+		t.Fatalf("preview did not freeze the restored draft: %#v", preview)
+	}
 
 	var contentItems struct {
 		Items []contentdomain.Content `json:"items"`
@@ -140,6 +170,10 @@ func TestCorePlatformWorkflows(t *testing.T) {
 		t.Fatal(err)
 	}
 	client.json(http.MethodPost, workspaceBase+"/inbox/", map[string]any{"kind": "text", "raw_text": "forbidden"}, nil, http.StatusForbidden)
+	client.json(http.MethodPost, workspaceBase+"/localizations/"+localizationID.String()+"/preview", nil, nil, http.StatusForbidden)
+	client.json(http.MethodPut, workspaceBase+"/localizations/"+localizationID.String()+"/draft", map[string]any{
+		"version": draft.Version, "title": "Forbidden", "summary": "", "body": draft.Body, "metadata": draft.Metadata,
+	}, nil, http.StatusForbidden)
 	if _, err := fixture.db.Exec(t.Context(), `UPDATE memberships SET role='owner' WHERE workspace_id=$1 AND user_id=$2`, fixture.workspaceID, fixture.userID); err != nil {
 		t.Fatal(err)
 	}

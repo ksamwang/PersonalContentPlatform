@@ -124,6 +124,8 @@ export function StudioApp() {
               key={selected.id}
               workspace={user.WorkspaceID}
               content={selected}
+              role={user.Role}
+              publicSite={publicSite}
               onChanged={() => void load(user, query)}
             />
           ) : (

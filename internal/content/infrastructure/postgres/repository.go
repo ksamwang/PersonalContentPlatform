@@ -235,3 +235,60 @@ func (r *Repository) Search(ctx context.Context, workspaceID uuid.UUID, locale, 
 	defer rows.Close()
 	return scanContentRows(rows)
 }
+
+func (r *Repository) ListRevisions(ctx context.Context, workspaceID, localizationID uuid.UUID, limit int) ([]domain.Revision, error) {
+	rows, err := r.db.Query(ctx, `SELECT id,localization_id,seq,schema_version,title,summary,body_json,metadata_json,content_hash,created_at FROM content_revisions WHERE workspace_id=$1 AND localization_id=$2 ORDER BY seq DESC LIMIT $3`, workspaceID, localizationID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []domain.Revision{}
+	for rows.Next() {
+		var revision domain.Revision
+		if err := rows.Scan(&revision.ID, &revision.LocalizationID, &revision.Seq, &revision.SchemaVersion, &revision.Title, &revision.Summary, &revision.Body, &revision.Metadata, &revision.ContentHash, &revision.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, revision)
+	}
+	return items, rows.Err()
+}
+func (r *Repository) GetRevision(ctx context.Context, workspaceID, localizationID, revisionID uuid.UUID) (domain.Revision, error) {
+	var revision domain.Revision
+	err := r.db.QueryRow(ctx, `SELECT id,localization_id,seq,schema_version,title,summary,body_json,metadata_json,content_hash,created_at FROM content_revisions WHERE workspace_id=$1 AND localization_id=$2 AND id=$3`, workspaceID, localizationID, revisionID).Scan(&revision.ID, &revision.LocalizationID, &revision.Seq, &revision.SchemaVersion, &revision.Title, &revision.Summary, &revision.Body, &revision.Metadata, &revision.ContentHash, &revision.CreatedAt)
+	return revision, err
+}
+func (r *Repository) RestoreRevision(ctx context.Context, workspaceID, userID, localizationID, revisionID uuid.UUID, expectedVersion int) (domain.Draft, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return domain.Draft{}, err
+	}
+	defer tx.Rollback(ctx)
+	var revision domain.Revision
+	if err = tx.QueryRow(ctx, `SELECT title,summary,body_json,metadata_json FROM content_revisions WHERE workspace_id=$1 AND localization_id=$2 AND id=$3`, workspaceID, localizationID, revisionID).Scan(&revision.Title, &revision.Summary, &revision.Body, &revision.Metadata); err != nil {
+		return domain.Draft{}, err
+	}
+	var draft domain.Draft
+	err = tx.QueryRow(ctx, `UPDATE draft_buffers SET version=version+1,title=$1,summary=$2,body_json=$3,metadata_json=$4,updated_by=$5,updated_at=now() WHERE workspace_id=$6 AND localization_id=$7 AND version=$8 RETURNING localization_id,version,title,summary,body_json,metadata_json,updated_at`, revision.Title, revision.Summary, revision.Body, revision.Metadata, userID, workspaceID, localizationID, expectedVersion).Scan(&draft.LocalizationID, &draft.Version, &draft.Title, &draft.Summary, &draft.Body, &draft.Metadata, &draft.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Draft{}, application.ErrConflict
+	}
+	if err != nil {
+		return domain.Draft{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return domain.Draft{}, err
+	}
+	return draft, nil
+}
+func (r *Repository) CreatePreview(ctx context.Context, workspaceID, userID, localizationID uuid.UUID, tokenHash []byte, expiresAt time.Time) error {
+	tag, err := r.db.Exec(ctx, `INSERT INTO preview_tokens(token_hash,workspace_id,localization_id,content_type,locale,title,summary,body_json,metadata_json,created_by,expires_at) SELECT $1,d.workspace_id,d.localization_id,c.type,l.locale,d.title,d.summary,d.body_json,d.metadata_json,$2,$3 FROM draft_buffers d JOIN content_localizations l ON l.id=d.localization_id JOIN contents c ON c.object_id=l.content_id WHERE d.workspace_id=$4 AND d.localization_id=$5`, tokenHash, userID, expiresAt, workspaceID, localizationID)
+	if err == nil && tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return err
+}
+func (r *Repository) GetPreview(ctx context.Context, tokenHash []byte) (domain.Preview, error) {
+	var preview domain.Preview
+	err := r.db.QueryRow(ctx, `SELECT content_type,locale,title,summary,body_json,metadata_json,expires_at FROM preview_tokens WHERE token_hash=$1 AND expires_at>now()`, tokenHash).Scan(&preview.Type, &preview.Locale, &preview.Title, &preview.Summary, &preview.Body, &preview.Metadata, &preview.ExpiresAt)
+	return preview, err
+}
