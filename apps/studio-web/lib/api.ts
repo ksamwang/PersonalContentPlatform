@@ -75,6 +75,10 @@ export type InboxConversion = { inbox_id:string; content_id:string; localization
 export type CollectionItem = {id:string;object_id:string;title:string;sort_key:number;annotation:string};
 export type CollectionSection = {id:string;title:string;sort_key:number;items:CollectionItem[]};
 export type Collection = {id:string;workspace_id:string;title:string;slug:string;visibility:"private"|"unlisted"|"public";sections:CollectionSection[]};
+export type EntityAlias={id:string;value:string;locale:string};
+export type KnowledgeEntity={id:string;type:string;canonical_name:string;description:string;aliases?:EntityAlias[];created_at:string};
+export type KnowledgeRelation={id:string;source_id:string;target_id:string;predicate:string;confirmed:boolean;created_at:string};
+export type KnowledgeMention={id:string;revision_id:string;entity_id:string;entity_name:string;content_id:string;content_title:string;locale:string;confidence:number;confirmed:boolean;created_at:string};
 export class APIError extends Error {
   constructor(
     public status: number,
@@ -234,4 +238,17 @@ export const api = {
   revision: (ws:string,localizationID:string,revisionID:string) => request<Revision>(`/v1/workspaces/${ws}/localizations/${localizationID}/revisions/${revisionID}`),
   restoreRevision: (ws:string,localizationID:string,revisionID:string,version:number) => request<Draft>(`/v1/workspaces/${ws}/localizations/${localizationID}/revisions/${revisionID}:restore`,{method:"POST",body:JSON.stringify({version})}),
   preview: (ws:string,localizationID:string) => request<{token:string;expires_at:string}>(`/v1/workspaces/${ws}/localizations/${localizationID}/preview`,{method:"POST"}),
+  entities:(ws:string,q="")=>requestItems<KnowledgeEntity>(`/v1/workspaces/${ws}/knowledge/entities?q=${encodeURIComponent(q)}`),
+  createEntity:(ws:string,value:{type:string;canonical_name:string;description:string})=>request<KnowledgeEntity>(`/v1/workspaces/${ws}/knowledge/entities`,{method:"POST",body:JSON.stringify(value)}),
+  updateEntity:(ws:string,id:string,value:{type:string;canonical_name:string;description:string})=>request<void>(`/v1/workspaces/${ws}/knowledge/entities/${id}`,{method:"PUT",body:JSON.stringify(value)}),
+  deleteEntity:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/knowledge/entities/${id}`,{method:"DELETE"}),
+  addEntityAlias:(ws:string,id:string,value:{value:string;locale:string})=>request<void>(`/v1/workspaces/${ws}/knowledge/entities/${id}/aliases`,{method:"POST",body:JSON.stringify(value)}),
+  deleteEntityAlias:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/knowledge/aliases/${id}`,{method:"DELETE"}),
+  knowledgeRelations:(ws:string,id:string)=>requestItems<KnowledgeRelation>(`/v1/workspaces/${ws}/knowledge/objects/${id}/relations`),
+  createKnowledgeRelation:(ws:string,value:{source_id:string;target_id:string;predicate:string;confirmed:boolean})=>request<KnowledgeRelation>(`/v1/workspaces/${ws}/knowledge/relations`,{method:"POST",body:JSON.stringify(value)}),
+  confirmKnowledgeRelation:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/knowledge/relations/${id}:confirm`,{method:"POST"}),
+  deleteKnowledgeRelation:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/knowledge/relations/${id}`,{method:"DELETE"}),
+  knowledgeMentions:(ws:string)=>requestItems<KnowledgeMention>(`/v1/workspaces/${ws}/knowledge/mentions`),
+  extractKnowledgeMentions:(ws:string)=>requestItems<KnowledgeMention>(`/v1/workspaces/${ws}/knowledge/mentions:extract`,{method:"POST"}),
+  confirmKnowledgeMention:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/knowledge/mentions/${id}:confirm`,{method:"POST"}),
 };

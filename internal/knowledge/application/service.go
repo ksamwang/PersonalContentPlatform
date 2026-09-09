@@ -43,3 +43,30 @@ func (s *Service) Confirm(ctx context.Context, ws, id uuid.UUID) error {
 func (s *Service) Relations(ctx context.Context, ws, objectID uuid.UUID) ([]domain.Relation, error) {
 	return s.repo.Relations(ctx, ws, objectID)
 }
+func (s *Service) UpdateEntity(ctx context.Context, ws, entityID uuid.UUID, kind, name, description string) error {
+	if strings.TrimSpace(kind) == "" || strings.TrimSpace(name) == "" {
+		return fmt.Errorf("type and canonical name are required")
+	}
+	return s.repo.UpdateEntity(ctx, ws, entityID, strings.TrimSpace(kind), strings.TrimSpace(name), strings.TrimSpace(description))
+}
+func (s *Service) DeleteEntity(ctx context.Context, ws, entityID uuid.UUID) error {
+	return s.repo.DeleteEntity(ctx, ws, entityID)
+}
+func (s *Service) DeleteAlias(ctx context.Context, ws, aliasID uuid.UUID) error {
+	return s.repo.DeleteAlias(ctx, ws, aliasID)
+}
+func (s *Service) DeleteRelation(ctx context.Context, ws, relationID uuid.UUID) error {
+	return s.repo.DeleteRelation(ctx, ws, relationID)
+}
+func (s *Service) ExtractMentions(ctx context.Context, ws uuid.UUID) ([]domain.Mention, error) {
+	if err := s.repo.ExtractMentions(ctx, ws); err != nil {
+		return nil, err
+	}
+	return s.repo.ListMentions(ctx, ws, false)
+}
+func (s *Service) Mentions(ctx context.Context, ws uuid.UUID, confirmed bool) ([]domain.Mention, error) {
+	return s.repo.ListMentions(ctx, ws, confirmed)
+}
+func (s *Service) ConfirmMention(ctx context.Context, ws, mentionID uuid.UUID) error {
+	return s.repo.ConfirmMention(ctx, ws, mentionID)
+}

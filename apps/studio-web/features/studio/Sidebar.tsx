@@ -4,12 +4,13 @@ import {
   Library,
   Images,
   LogOut,
+  Network,
   Search,
   Settings2,
   Shapes,
 } from "lucide-react";
 
-export type StudioView = "content"|"inbox"|"collections"|"assets"|"discover"|"settings";
+export type StudioView = "content"|"inbox"|"collections"|"assets"|"knowledge"|"discover"|"settings";
 export function Sidebar({ onNavigate, view, publicSite, userLabel, onLogout }: { onNavigate: (view:StudioView) => void; view: StudioView; publicSite:string; userLabel:string; onLogout:()=>void }) {
   return (
     <aside className="sidebar">
@@ -34,6 +35,7 @@ export function Sidebar({ onNavigate, view, publicSite, userLabel, onLogout }: {
           <span>合集</span>
         </button>
         <button className={view === "assets" ? "active" : ""} onClick={()=>onNavigate("assets")}><Images aria-hidden size={19}/><span>资产</span></button>
+        <button className={view === "knowledge" ? "active" : ""} onClick={()=>onNavigate("knowledge")}><Network aria-hidden size={19}/><span>知识</span></button>
         <button className={view === "discover" ? "active" : ""} onClick={()=>onNavigate("discover")}>
           <Search aria-hidden size={19} />
           <span>发现</span>

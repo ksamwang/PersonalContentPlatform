@@ -26,3 +26,15 @@ type Relation struct {
 	Confirmed    bool      `json:"confirmed"`
 	CreatedAt    time.Time `json:"created_at"`
 }
+type Mention struct {
+	ID           uuid.UUID `json:"id"`
+	RevisionID   uuid.UUID `json:"revision_id"`
+	EntityID     uuid.UUID `json:"entity_id"`
+	EntityName   string    `json:"entity_name"`
+	ContentID    uuid.UUID `json:"content_id"`
+	ContentTitle string    `json:"content_title"`
+	Locale       string    `json:"locale"`
+	Confidence   float32   `json:"confidence"`
+	Confirmed    bool      `json:"confirmed"`
+	CreatedAt    time.Time `json:"created_at"`
+}

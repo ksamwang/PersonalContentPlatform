@@ -43,7 +43,25 @@ func (r *Repository) ListEntities(ctx context.Context, ws uuid.UUID, q string, l
 		}
 		items = append(items, e)
 	}
-	return items, rows.Err()
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range items {
+		aliasRows, queryErr := r.db.Query(ctx, `SELECT id,alias,locale FROM entity_aliases WHERE workspace_id=$1 AND entity_id=$2 ORDER BY locale,alias`, ws, items[i].ID)
+		if queryErr != nil {
+			return nil, queryErr
+		}
+		for aliasRows.Next() {
+			var alias domain.Alias
+			if queryErr = aliasRows.Scan(&alias.ID, &alias.Value, &alias.Locale); queryErr != nil {
+				aliasRows.Close()
+				return nil, queryErr
+			}
+			items[i].Aliases = append(items[i].Aliases, alias)
+		}
+		aliasRows.Close()
+	}
+	return items, nil
 }
 func (r *Repository) AddAlias(ctx context.Context, ws, entityID uuid.UUID, value, locale string) error {
 	_, err := r.db.Exec(ctx, `INSERT INTO entity_aliases(id,workspace_id,entity_id,alias,locale) SELECT $1,$2,e.object_id,$3,$4 FROM entities e WHERE e.object_id=$5 AND e.workspace_id=$2`, id.New(), ws, value, locale, entityID)
@@ -87,4 +105,57 @@ func (r *Repository) Relations(ctx context.Context, ws, objectID uuid.UUID) ([]d
 		items = append(items, v)
 	}
 	return items, rows.Err()
+}
+func (r *Repository) UpdateEntity(ctx context.Context, ws, entityID uuid.UUID, kind, name, description string) error {
+	_, err := r.db.Exec(ctx, `UPDATE entities SET type=$1,canonical_name=$2,description=$3,updated_at=now() WHERE workspace_id=$4 AND object_id=$5`, kind, name, description, ws, entityID)
+	return err
+}
+func (r *Repository) DeleteEntity(ctx context.Context, ws, entityID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM objects WHERE workspace_id=$1 AND id=$2 AND kind='entity'`, ws, entityID)
+	return err
+}
+func (r *Repository) DeleteAlias(ctx context.Context, ws, aliasID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM entity_aliases WHERE workspace_id=$1 AND id=$2`, ws, aliasID)
+	return err
+}
+func (r *Repository) DeleteRelation(ctx context.Context, ws, relationID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM relations WHERE workspace_id=$1 AND id=$2`, ws, relationID)
+	return err
+}
+func (r *Repository) ExtractMentions(ctx context.Context, ws uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `WITH terms AS (
+		SELECT workspace_id,object_id AS entity_id,canonical_name AS term FROM entities
+		UNION ALL SELECT workspace_id,entity_id,alias FROM entity_aliases
+	), candidates AS (
+		SELECT DISTINCT l.current_revision_id AS revision_id,t.entity_id,t.term
+		FROM content_localizations l
+		JOIN content_revisions rv ON rv.id=l.current_revision_id
+		JOIN terms t ON t.workspace_id=l.workspace_id
+		WHERE l.workspace_id=$1 AND length(t.term)>=2
+		AND lower(rv.title||' '||rv.summary||' '||rv.body_json::text) LIKE '%'||lower(t.term)||'%'
+	)
+	INSERT INTO mentions(id,workspace_id,revision_id,entity_id,locator_json,confidence,confirmed,provenance)
+	SELECT gen_random_uuid(),$1,revision_id,entity_id,jsonb_build_object('matched_text',term),0.8,false,'{"source":"term_match"}'::jsonb FROM candidates
+	ON CONFLICT(revision_id,entity_id) DO UPDATE SET locator_json=EXCLUDED.locator_json,confidence=EXCLUDED.confidence`, ws)
+	return err
+}
+func (r *Repository) ListMentions(ctx context.Context, ws uuid.UUID, confirmed bool) ([]domain.Mention, error) {
+	rows, err := r.db.Query(ctx, `SELECT m.id,m.revision_id,m.entity_id,e.canonical_name,l.content_id,rv.title,l.locale,m.confidence,m.confirmed,m.created_at FROM mentions m JOIN entities e ON e.object_id=m.entity_id JOIN content_revisions rv ON rv.id=m.revision_id JOIN content_localizations l ON l.id=rv.localization_id WHERE m.workspace_id=$1 AND ($2 OR NOT m.confirmed) ORDER BY m.confirmed,m.created_at DESC`, ws, confirmed)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []domain.Mention{}
+	for rows.Next() {
+		var item domain.Mention
+		if err = rows.Scan(&item.ID, &item.RevisionID, &item.EntityID, &item.EntityName, &item.ContentID, &item.ContentTitle, &item.Locale, &item.Confidence, &item.Confirmed, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+func (r *Repository) ConfirmMention(ctx context.Context, ws, mentionID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `UPDATE mentions SET confirmed=true WHERE workspace_id=$1 AND id=$2`, ws, mentionID)
+	return err
 }
