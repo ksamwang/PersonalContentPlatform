@@ -3,13 +3,14 @@ import {
   Inbox,
   Library,
   Images,
+  LogOut,
   Search,
   Settings2,
   Shapes,
 } from "lucide-react";
 
 export type StudioView = "content"|"inbox"|"collections"|"assets"|"discover"|"settings";
-export function Sidebar({ onNavigate, view, publicSite }: { onNavigate: (view:StudioView) => void; view: StudioView; publicSite:string }) {
+export function Sidebar({ onNavigate, view, publicSite, userLabel, onLogout }: { onNavigate: (view:StudioView) => void; view: StudioView; publicSite:string; userLabel:string; onLogout:()=>void }) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -42,10 +43,20 @@ export function Sidebar({ onNavigate, view, publicSite }: { onNavigate: (view:St
           <span>发布站点</span>
         </a>
       </nav>
-      <button className={`settings ${view === "settings" ? "active" : ""}`} onClick={()=>onNavigate("settings")}>
-        <Settings2 aria-hidden size={19} />
-        <span>设置</span>
-      </button>
+      <div className="sidebar-account">
+        <button className={`settings ${view === "settings" ? "active" : ""}`} onClick={()=>onNavigate("settings")}>
+          <Settings2 aria-hidden size={19} />
+          <span>设置</span>
+        </button>
+        <div className="account-meta" title={userLabel}>
+          <span className="account-avatar" aria-hidden>{userLabel.slice(0, 1).toUpperCase()}</span>
+          <span>{userLabel}</span>
+        </div>
+        <button className="logout" onClick={onLogout}>
+          <LogOut aria-hidden size={19} />
+          <span>退出登录</span>
+        </button>
+      </div>
     </aside>
   );
 }

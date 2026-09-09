@@ -58,6 +58,31 @@ export function EditorPanel({
     content: "",
     immediatelyRender: false,
     editable: canEdit,
+    editorProps: {
+      handlePaste: (_view, event) => {
+        if (!canEdit) return false;
+        const image = Array.from(event.clipboardData?.files ?? []).find((file) =>
+          file.type.startsWith("image/"),
+        );
+        if (!image) return false;
+        event.preventDefault();
+        setStatus("正在上传剪贴板图片…");
+        void api
+          .uploadAsset(workspace, image)
+          .then((asset) => {
+            editor
+              ?.chain()
+              .focus()
+              .setImage({ src: `/media/${asset.id}`, alt: "", title: asset.filename })
+              .run();
+            setStatus("图片已插入");
+          })
+          .catch((error) =>
+            setStatus(error instanceof Error ? `图片上传失败：${error.message}` : "图片上传失败"),
+          );
+        return true;
+      },
+    },
     onUpdate: ({editor}) => {
       setCharacterCount(editor.getText().replace(/\s/g,"").length);
       const {$from}=editor.state.selection;

@@ -68,7 +68,13 @@ export function StudioApp() {
   if (!user) return <AuthPanel onAuthenticated={setUser} />;
   return (
     <div className="studio">
-      <Sidebar view={view} publicSite={publicSite} onNavigate={setView} />
+      <Sidebar
+        view={view}
+        publicSite={publicSite}
+        userLabel={user.DisplayName || user.Email}
+        onNavigate={setView}
+        onLogout={() => void api.logout().then(() => setUser(null))}
+      />
       <main id="main" className="workspace">
         {view === "settings" ? (
           <SettingsPanel workspace={user.WorkspaceID} role={user.Role} />
@@ -112,9 +118,6 @@ export function StudioApp() {
           <section className="library-pane" aria-label="内容列表">
             <div className="pane-meta">
               <span>{items.length} 项内容</span>
-              <button onClick={() => api.logout().then(() => setUser(null))}>
-                退出登录
-              </button>
             </div>
             {loadError && (
               <div className="inline-error" role="alert">
