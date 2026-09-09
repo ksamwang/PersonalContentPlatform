@@ -8,6 +8,7 @@ import (
 	assethttp "github.com/ksamwang/PersonalContentPlatform/internal/asset/transport"
 	contenthttp "github.com/ksamwang/PersonalContentPlatform/internal/content/transport"
 	identityhttp "github.com/ksamwang/PersonalContentPlatform/internal/identity/transport"
+	inboxhttp "github.com/ksamwang/PersonalContentPlatform/internal/inbox/transport"
 	integrationhttp "github.com/ksamwang/PersonalContentPlatform/internal/integration/transport"
 	knowledgehttp "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/transport"
 	publicationhttp "github.com/ksamwang/PersonalContentPlatform/internal/publication/transport"
@@ -25,6 +26,7 @@ func TestRouterRegistersAllModuleRoutes(t *testing.T) {
 		ai:          aihttp.NewHTTP(nil, passthrough),
 		integration: integrationhttp.NewHTTP(nil, nil, passthrough),
 		settings:    settingshttp.NewHTTP(nil, passthrough),
+		inbox:       inboxhttp.NewHTTP(nil, passthrough),
 	}
 	if router := application.Router(); router == nil {
 		t.Fatal("expected router")

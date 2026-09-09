@@ -18,6 +18,9 @@ import (
 	identityapp "github.com/ksamwang/PersonalContentPlatform/internal/identity/application"
 	identitypg "github.com/ksamwang/PersonalContentPlatform/internal/identity/infrastructure/postgres"
 	identityhttp "github.com/ksamwang/PersonalContentPlatform/internal/identity/transport"
+	inboxapp "github.com/ksamwang/PersonalContentPlatform/internal/inbox/application"
+	inboxpg "github.com/ksamwang/PersonalContentPlatform/internal/inbox/infrastructure/postgres"
+	inboxhttp "github.com/ksamwang/PersonalContentPlatform/internal/inbox/transport"
 	integrationapp "github.com/ksamwang/PersonalContentPlatform/internal/integration/application"
 	integrationpg "github.com/ksamwang/PersonalContentPlatform/internal/integration/infrastructure/postgres"
 	integrationhttp "github.com/ksamwang/PersonalContentPlatform/internal/integration/transport"
@@ -45,6 +48,7 @@ type App struct {
 	ai          *aihttp.HTTP
 	integration *integrationhttp.HTTP
 	settings    *settingshttp.HTTP
+	inbox       *inboxhttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -77,6 +81,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 		ai:          aihttp.NewHTTP(aiService, identityTransport.RequireSession),
 		integration: integrationhttp.NewHTTP(integrationapp.NewExportService(integrationRepository), integrationapp.NewWebhookService(integrationRepository), identityTransport.RequireSession),
 		settings:    settingshttp.NewHTTP(settingsapp.New(settingsRepository, cfg.StorageBasePath), identityTransport.RequireSession),
+		inbox:       inboxhttp.NewHTTP(inboxapp.New(inboxpg.New(db), cfg.SupportedLocales, settingsRepository), identityTransport.RequireSession),
 	}, nil
 }
 func (a *App) Router() http.Handler {
@@ -91,5 +96,6 @@ func (a *App) Router() http.Handler {
 	a.ai.Register(r)
 	a.integration.Register(r)
 	a.settings.Register(r)
+	a.inbox.Register(r)
 	return r
 }

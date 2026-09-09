@@ -7,7 +7,8 @@ import {
   Shapes,
 } from "lucide-react";
 
-export function Sidebar({ onSearch, onSettings, view, publicSite }: { onSearch: () => void; onSettings: () => void; view: "content"|"settings"; publicSite:string }) {
+export type StudioView = "content"|"inbox"|"collections"|"settings";
+export function Sidebar({ onNavigate, onSearch, view, publicSite }: { onNavigate: (view:StudioView) => void; onSearch: () => void; view: StudioView; publicSite:string }) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -17,15 +18,14 @@ export function Sidebar({ onSearch, onSettings, view, publicSite }: { onSearch: 
       <nav aria-label="主要导航">
         <button
           className={view === "content" ? "active" : ""}
-          onClick={() => document.querySelector("#main")?.scrollIntoView()}
+          onClick={() => onNavigate("content")}
         >
           <Library aria-hidden size={19} />
           <span>内容</span>
         </button>
-        <button disabled title="收件箱将在后续版本开放">
+        <button className={view === "inbox" ? "active" : ""} onClick={()=>onNavigate("inbox")}>
           <Inbox aria-hidden size={19} />
           <span>收件箱</span>
-          <small>规划中</small>
         </button>
         <button disabled title="合集将在后续版本开放">
           <Shapes aria-hidden size={19} />
@@ -41,7 +41,7 @@ export function Sidebar({ onSearch, onSettings, view, publicSite }: { onSearch: 
           <span>发布站点</span>
         </a>
       </nav>
-      <button className={`settings ${view === "settings" ? "active" : ""}`} onClick={onSettings}>
+      <button className={`settings ${view === "settings" ? "active" : ""}`} onClick={()=>onNavigate("settings")}>
         <Settings2 aria-hidden size={19} />
         <span>设置</span>
       </button>

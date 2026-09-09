@@ -10,13 +10,15 @@ import { ContentList } from "./ContentList";
 import { CreateContent } from "./CreateContent";
 import { Sidebar } from "./Sidebar";
 import { SettingsPanel } from "../settings/SettingsPanel";
+import { InboxPanel } from "../inbox/InboxPanel";
+import { StudioView } from "./Sidebar";
 export function StudioApp() {
   const [user, setUser] = useState<Principal | null | undefined>(undefined),
     [items, setItems] = useState<Content[]>([]),
     [selected, setSelected] = useState<Content>(),
     [query, setQuery] = useState(""),
     [loadError, setLoadError] = useState(""),
-    [view, setView] = useState<"content" | "settings">("content"),
+    [view, setView] = useState<StudioView>("content"),
     [publicSite,setPublicSite] = useState("http://localhost:3000/zh");
   const searchRef = useRef<HTMLInputElement>(null);
   const load = useCallback(
@@ -59,10 +61,12 @@ export function StudioApp() {
   if (!user) return <AuthPanel onAuthenticated={setUser} />;
   return (
     <div className="studio">
-      <Sidebar view={view} publicSite={publicSite} onSearch={() => { setView("content"); setTimeout(() => searchRef.current?.focus(), 0); }} onSettings={() => setView("settings")} />
+      <Sidebar view={view} publicSite={publicSite} onNavigate={setView} onSearch={() => { setView("content"); setTimeout(() => searchRef.current?.focus(), 0); }} />
       <main id="main" className="workspace">
         {view === "settings" ? (
           <SettingsPanel workspace={user.WorkspaceID} role={user.Role} />
+        ) : view === "inbox" ? (
+          <InboxPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{const content=await api.content(user.WorkspaceID,id);setSelected(content);setView("content");void load(user,"")}catch(err){setLoadError(err instanceof Error?err.message:"内容加载失败");setView("content")}}}/>
         ) : (<>
         <header className="topbar">
           <div>

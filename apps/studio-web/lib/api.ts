@@ -57,6 +57,8 @@ export type StorageSettings = { id?: string; name: string; provider: "filesystem
 export type AISettings = { provider: string; base_url: string; api_key_mask?: string; api_key_set?: boolean; model: string; purpose_models: Record<string,string> };
 export type WorkspaceSettings = { general: GeneralSettings; storage: StorageSettings|null; ai: AISettings; can_edit: boolean };
 export type WebhookEndpoint = {id:string;name:string;url:string;secret_set:boolean;enabled:boolean;event_types:string[]};
+export type InboxItem = { id:string; kind:"text"|"link"; raw_text:string; source_url?:string; state:"pending"|"converted"|"archived"; converted_content_id?:string; created_at:string; updated_at:string };
+export type InboxConversion = { inbox_id:string; content_id:string; localization_id:string };
 export class APIError extends Error {
   constructor(
     public status: number,
@@ -182,4 +184,8 @@ export const api = {
   createWebhook:(ws:string,value:{name:string;url:string;secret:string;event_types:string[]})=>request<WebhookEndpoint>(`/v1/workspaces/${ws}/webhooks`,{method:"POST",body:JSON.stringify(value)}),
   setWebhookEnabled:(ws:string,id:string,enabled:boolean)=>request<void>(`/v1/workspaces/${ws}/webhooks/${id}`,{method:"PATCH",body:JSON.stringify({enabled})}),
   deleteWebhook:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/webhooks/${id}`,{method:"DELETE"}),
+  inbox: (ws:string,state="pending") => requestItems<InboxItem>(`/v1/workspaces/${ws}/inbox/?state=${encodeURIComponent(state)}`),
+  captureInbox: (ws:string,value:{kind:"text"|"link";raw_text:string;source_url?:string}) => request<InboxItem>(`/v1/workspaces/${ws}/inbox/`,{method:"POST",body:JSON.stringify(value)}),
+  archiveInbox: (ws:string,id:string) => request<void>(`/v1/workspaces/${ws}/inbox/${id}:archive`,{method:"POST"}),
+  convertInbox: (ws:string,id:string,value:{type:Content["type"];locale:string;slug:string;title:string}) => request<InboxConversion>(`/v1/workspaces/${ws}/inbox/${id}:convert`,{method:"POST",body:JSON.stringify(value)}),
 };
