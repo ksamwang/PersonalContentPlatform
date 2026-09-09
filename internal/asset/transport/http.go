@@ -6,6 +6,7 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/asset/application"
 	identity "github.com/ksamwang/PersonalContentPlatform/internal/identity/transport"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/httpx"
+	"io"
 	"net/http"
 	"strconv"
 )
@@ -19,6 +20,7 @@ func NewHTTP(s *application.Service, a func(http.Handler) http.Handler) *HTTP {
 	return &HTTP{service: s, auth: a}
 }
 func (h *HTTP) Register(r chi.Router) {
+	r.Get("/v1/public/assets/{assetID}", h.publicContent)
 	r.Group(func(r chi.Router) {
 		r.Use(h.auth)
 		r.Route("/v1/workspaces/{workspaceID}/assets", func(r chi.Router) {
@@ -29,6 +31,23 @@ func (h *HTTP) Register(r chi.Router) {
 		r.With(scope).Post("/v1/workspaces/{workspaceID}/assets:prepare-upload", h.prepare)
 		r.With(scope).Post("/v1/workspaces/{workspaceID}/assets:finalize-upload", h.finalize)
 	})
+}
+func (h *HTTP) publicContent(w http.ResponseWriter, r *http.Request) {
+	assetID, err := uuid.Parse(chi.URLParam(r, "assetID"))
+	if err != nil {
+		httpx.Error(w, 404, "asset_not_found", "asset was not found")
+		return
+	}
+	reader, object, err := h.service.OpenPublic(r.Context(), assetID)
+	if err != nil {
+		httpx.Error(w, 404, "asset_not_found", "asset was not found")
+		return
+	}
+	defer reader.Close()
+	w.Header().Set("Content-Type", object.MIME)
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	w.Header().Set("Content-Length", strconv.FormatInt(object.Size, 10))
+	_, _ = io.Copy(w, reader)
 }
 func scope(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

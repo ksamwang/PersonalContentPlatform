@@ -25,6 +25,13 @@ type Asset struct {
 	SHA256           string     `json:"sha256"`
 	CreatedAt        time.Time  `json:"created_at"`
 }
+type StoredObject struct {
+	WorkspaceID      uuid.UUID
+	StorageProfileID *uuid.UUID
+	StorageKey       string
+	MIME             string
+	Size             int64
+}
 type UploadPlan struct {
 	UploadID  uuid.UUID         `json:"upload_id"`
 	Method    string            `json:"method"`

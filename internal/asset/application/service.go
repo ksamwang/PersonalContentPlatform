@@ -102,3 +102,15 @@ func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, limit int) ([
 	}
 	return s.repo.List(ctx, workspaceID, limit)
 }
+func (s *Service) OpenPublic(ctx context.Context, assetID uuid.UUID) (io.ReadCloser, domain.StoredObject, error) {
+	object, err := s.repo.Object(ctx, assetID)
+	if err != nil {
+		return nil, domain.StoredObject{}, err
+	}
+	storage, _, err := s.storage.Resolve(ctx, object.WorkspaceID, object.StorageProfileID)
+	if err != nil {
+		return nil, domain.StoredObject{}, err
+	}
+	reader, err := storage.Open(ctx, object.StorageKey)
+	return reader, object, err
+}

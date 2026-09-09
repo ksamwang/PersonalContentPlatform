@@ -69,3 +69,8 @@ func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, limit int)
 	}
 	return items, rows.Err()
 }
+func (r *Repository) Object(ctx context.Context, assetID uuid.UUID) (domain.StoredObject, error) {
+	var value domain.StoredObject
+	err := r.db.QueryRow(ctx, `SELECT a.workspace_id,b.storage_profile_id,b.storage_key,b.mime,b.size FROM assets a JOIN blobs b ON b.id=a.blob_id WHERE a.object_id=$1 AND a.state='ready'`, assetID).Scan(&value.WorkspaceID, &value.StorageProfileID, &value.StorageKey, &value.MIME, &value.Size)
+	return value, err
+}

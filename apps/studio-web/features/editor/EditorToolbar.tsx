@@ -11,19 +11,13 @@ function Tool({label,active,disabled,onClick,children}:ToolProps){
   return <button type="button" aria-label={label} title={label} aria-pressed={active||undefined} disabled={disabled} onClick={onClick}>{children}</button>;
 }
 
-export function EditorToolbar({editor,focusMode,onFocusMode}:{editor:Editor;focusMode:boolean;onFocusMode:()=>void}){
+export function EditorToolbar({editor,focusMode,onFocusMode,onAsset}:{editor:Editor;focusMode:boolean;onFocusMode:()=>void;onAsset:()=>void}){
   function editLink(){
     const previous=editor.getAttributes("link").href as string|undefined;
     const href=window.prompt("输入链接地址",previous||"https://");
     if(href===null)return;
     if(!href.trim()){editor.chain().focus().extendMarkRange("link").unsetLink().run();return}
     editor.chain().focus().extendMarkRange("link").setLink({href:href.trim()}).run();
-  }
-  function insertImage(){
-    const src=window.prompt("输入图片地址");
-    if(!src?.trim())return;
-    const alt=window.prompt("输入图片替代文字（用于无障碍阅读）")?.trim()||"";
-    editor.chain().focus().setImage({src:src.trim(),alt}).run();
   }
   return <div className="toolbar" role="toolbar" aria-label="编辑工具栏">
     <div className="toolbar-group" aria-label="历史操作">
@@ -51,7 +45,7 @@ export function EditorToolbar({editor,focusMode,onFocusMode}:{editor:Editor;focu
     <div className="toolbar-group" aria-label="插入内容">
       <Tool label="添加或编辑链接" active={editor.isActive("link")} onClick={editLink}><Link2/></Tool>
       <Tool label="移除链接" disabled={!editor.isActive("link")} onClick={()=>editor.chain().focus().unsetLink().run()}><Unlink/></Tool>
-      <Tool label="插入图片" onClick={insertImage}><ImagePlus/></Tool>
+      <Tool label="从资产库插入图片" onClick={onAsset}><ImagePlus/></Tool>
       <Tool label="插入 3×3 表格" onClick={()=>editor.chain().focus().insertTable({rows:3,cols:3,withHeaderRow:true}).run()}><Table2/></Tool>
     </div>
     <div className="toolbar-group toolbar-end">

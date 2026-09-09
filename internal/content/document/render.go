@@ -4,14 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"html"
+	"net/url"
 	"strings"
 )
 
+type Mark struct {
+	Type  string         `json:"type"`
+	Attrs map[string]any `json:"attrs,omitempty"`
+}
 type Node struct {
 	Type    string         `json:"type"`
 	Text    string         `json:"text,omitempty"`
 	Attrs   map[string]any `json:"attrs,omitempty"`
 	Content []Node         `json:"content,omitempty"`
+	Marks   []Mark         `json:"marks,omitempty"`
 }
 type Document struct {
 	SchemaVersion int    `json:"schemaVersion"`
@@ -54,62 +60,111 @@ func walk(nodes []Node, fn func(Node)) {
 		walk(n.Content, fn)
 	}
 }
+func children(out *bytes.Buffer, n Node) {
+	for _, child := range n.Content {
+		renderNode(out, child)
+	}
+}
 func renderNode(out *bytes.Buffer, n Node) {
-	text := func() {
-		for _, child := range n.Content {
-			if child.Type == "text" {
-				out.WriteString(html.EscapeString(child.Text))
-			} else {
-				renderNode(out, child)
+	switch n.Type {
+	case "text":
+		value := html.EscapeString(n.Text)
+		for _, mark := range n.Marks {
+			switch mark.Type {
+			case "bold":
+				value = "<strong>" + value + "</strong>"
+			case "italic":
+				value = "<em>" + value + "</em>"
+			case "strike":
+				value = "<s>" + value + "</s>"
+			case "underline":
+				value = "<u>" + value + "</u>"
+			case "code":
+				value = "<code>" + value + "</code>"
+			case "link":
+				if href := safeURL(mark.Attrs["href"]); href != "" {
+					value = `<a href="` + html.EscapeString(href) + `">` + value + "</a>"
+				}
 			}
 		}
-	}
-	switch n.Type {
+		out.WriteString(value)
 	case "paragraph":
 		out.WriteString("<p>")
-		text()
+		children(out, n)
 		out.WriteString("</p>")
 	case "heading":
 		level := 1
-		if v, ok := n.Attrs["level"].(float64); ok && v >= 1 && v <= 6 {
-			level = int(v)
+		if value, ok := n.Attrs["level"].(float64); ok && value >= 1 && value <= 6 {
+			level = int(value)
 		}
-		out.WriteString("<h" + string(rune('0'+level)) + ">")
-		text()
-		out.WriteString("</h" + string(rune('0'+level)) + ">")
+		tag := string(rune('0' + level))
+		out.WriteString("<h" + tag + ">")
+		children(out, n)
+		out.WriteString("</h" + tag + ">")
 	case "blockquote":
 		out.WriteString("<blockquote>")
-		text()
+		children(out, n)
 		out.WriteString("</blockquote>")
 	case "bulletList":
 		out.WriteString("<ul>")
-		for _, c := range n.Content {
-			renderNode(out, c)
-		}
+		children(out, n)
 		out.WriteString("</ul>")
 	case "orderedList":
 		out.WriteString("<ol>")
-		for _, c := range n.Content {
-			renderNode(out, c)
-		}
+		children(out, n)
 		out.WriteString("</ol>")
-	case "listItem":
+	case "taskList":
+		out.WriteString(`<ul data-type="taskList">`)
+		children(out, n)
+		out.WriteString("</ul>")
+	case "listItem", "taskItem":
 		out.WriteString("<li>")
-		text()
+		children(out, n)
 		out.WriteString("</li>")
 	case "codeBlock":
 		out.WriteString("<pre><code>")
-		text()
+		for _, child := range n.Content {
+			out.WriteString(html.EscapeString(child.Text))
+		}
 		out.WriteString("</code></pre>")
 	case "horizontalRule":
 		out.WriteString("<hr>")
-	case "callout":
-		out.WriteString(`<aside class="callout">`)
-		text()
-		out.WriteString("</aside>")
-	case "text":
-		out.WriteString(html.EscapeString(n.Text))
-	default:
-		out.WriteString(`<div data-unsupported-block="` + html.EscapeString(n.Type) + `"></div>`)
+	case "hardBreak":
+		out.WriteString("<br>")
+	case "image":
+		if src := safeURL(n.Attrs["src"]); src != "" {
+			out.WriteString(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(stringAttr(n.Attrs["alt"])) + `">`)
+		}
+	case "table":
+		out.WriteString("<table>")
+		children(out, n)
+		out.WriteString("</table>")
+	case "tableRow":
+		out.WriteString("<tr>")
+		children(out, n)
+		out.WriteString("</tr>")
+	case "tableHeader":
+		out.WriteString("<th>")
+		children(out, n)
+		out.WriteString("</th>")
+	case "tableCell":
+		out.WriteString("<td>")
+		children(out, n)
+		out.WriteString("</td>")
 	}
+}
+func stringAttr(value any) string { result, _ := value.(string); return result }
+func safeURL(value any) string {
+	raw := strings.TrimSpace(stringAttr(value))
+	if raw == "" {
+		return ""
+	}
+	if strings.HasPrefix(raw, "/media/") {
+		return raw
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return ""
+	}
+	return raw
 }

@@ -2,8 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { Eye, History, PanelRight, Save, Send } from "lucide-react";
-import { api, Content, Draft, Readiness } from "../../lib/api";
+import { api, APIError, Content, Draft, Readiness } from "../../lib/api";
+import { AssetPickerDialog } from "./AssetPickerDialog";
 import { ContentPropertiesPanel } from "./ContentPropertiesPanel";
+import { DraftConflictNotice } from "./DraftConflictNotice";
 import { EditorToolbar } from "./EditorToolbar";
 import { RevisionPanel } from "./RevisionPanel";
 import { SlashCommandMenu } from "./SlashCommandMenu";
@@ -41,7 +43,9 @@ export function EditorPanel({
     [characterCount,setCharacterCount]=useState(0),
     [propertiesOpen,setPropertiesOpen]=useState(false),
     [readiness,setReadiness]=useState<Readiness|null>(null),
-    [translationBusy,setTranslationBusy]=useState(false);
+    [translationBusy,setTranslationBusy]=useState(false),
+    [assetPickerOpen,setAssetPickerOpen]=useState(false),
+    [conflict,setConflict]=useState<{localizationID:string;values:Pick<Draft,"title"|"summary"|"body"|"metadata">}|null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef<Draft | null>(null);
   const titleRef = useRef("");
@@ -62,6 +66,7 @@ export function EditorPanel({
     },
   });
   useEffect(()=>{editor?.setEditable(canEdit)},[editor,canEdit]);
+  useEffect(()=>{const beforeUnload=(event:BeforeUnloadEvent)=>{if(status==="等待保存"||status==="正在保存"){event.preventDefault();event.returnValue=""}};window.addEventListener("beforeunload",beforeUnload);return()=>window.removeEventListener("beforeunload",beforeUnload)},[status]);
   useEffect(() => {
     let active = true;
     setDraft(null);
@@ -113,8 +118,10 @@ export function EditorPanel({
       setDraft(next);
       draftRef.current = next;
       setStatus("已保存");
+      setConflict(null);
       return next;
     } catch (err) {
+      if(err instanceof APIError&&err.status===409)setConflict({localizationID:targetLocalizationID,values});
       setStatus(
         err instanceof Error ? `保存失败：${err.message}` : "保存失败，请重试",
       );
@@ -178,6 +185,7 @@ export function EditorPanel({
     try{if(timer.current)clearTimeout(timer.current);await save();const next=await api.translateLocalization(workspace,localization.id,source.id);applyRestoredDraft(next);const refreshed=await api.content(workspace,content.id);onContentChanged(refreshed);setStatus("AI 译稿已生成，请校对后发布")}
     catch(error){setStatus(error instanceof Error?`翻译失败：${error.message}`:"翻译失败，请重试")}finally{setTranslationBusy(false)}
   }
+  async function overwriteConflict(){if(!conflict)return;try{const latest=await api.draft(workspace,conflict.localizationID);draftRef.current=latest;setDraft(latest);await performSave(conflict.localizationID,conflict.values)}catch(error){setStatus(error instanceof Error?error.message:"冲突恢复失败")}}
   async function waitUntilPublished() {
     for (let attempt = 0; attempt < 20; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -250,14 +258,16 @@ export function EditorPanel({
           scheduleSave();
         }}
       />
-      {editor&&<EditorToolbar editor={editor} focusMode={focusMode} onFocusMode={()=>setFocusMode(v=>!v)}/>}
+      {conflict&&<DraftConflictNotice onCopy={()=>void navigator.clipboard.writeText(JSON.stringify(conflict.values,null,2)).then(()=>setStatus("本地内容已复制"))} onReload={()=>{setConflict(null);setReloadToken(v=>v+1)}} onOverwrite={()=>void overwriteConflict()}/>}
+      {editor&&<EditorToolbar editor={editor} focusMode={focusMode} onFocusMode={()=>setFocusMode(v=>!v)} onAsset={()=>setAssetPickerOpen(true)}/>}
       <div className="editor-canvas">
-        {editor&&<SlashCommandMenu editor={editor} open={slashOpen} onClose={()=>setSlashOpen(false)}/>}
+        {editor&&<SlashCommandMenu editor={editor} open={slashOpen} onClose={()=>setSlashOpen(false)} onAsset={()=>{setSlashOpen(false);setAssetPickerOpen(true)}}/>}
         <EditorContent editor={editor} className="prose-editor" />
       </div>
       <footer className="editor-stats"><span>{characterCount.toLocaleString("zh-CN")} 字</span><span>约 {Math.max(1,Math.ceil(characterCount/400))} 分钟阅读</span><span>输入 / 可快速插入内容</span></footer>
       {historyOpen&&<RevisionPanel workspace={workspace} localizationID={localization.id} draftVersion={draft.version} canEdit={canEdit} refresh={revisionRefresh} onClose={()=>setHistoryOpen(false)} onRestored={applyRestoredDraft}/>}
       {propertiesOpen&&<ContentPropertiesPanel workspace={workspace} content={content} localization={localization} draft={draft} canEdit={canEdit} readiness={readiness} onMetadataChange={updateMetadata} onSaved={onChanged} onClose={()=>setPropertiesOpen(false)}/>}
+      {assetPickerOpen&&editor&&<AssetPickerDialog workspace={workspace} onClose={()=>setAssetPickerOpen(false)} onInsert={(asset,alt)=>{editor.chain().focus().setImage({src:`/media/${asset.id}`,alt,title:asset.filename}).run();setAssetPickerOpen(false)}}/>}
     </section>
   );
 }

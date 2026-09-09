@@ -100,6 +100,22 @@ func TestCorePlatformWorkflows(t *testing.T) {
 
 	var revision contentdomain.Revision
 	client.json(http.MethodPost, workspaceBase+"/localizations/"+localizationID.String()+"/revisions", map[string]any{"version": draft.Version}, &revision, http.StatusCreated)
+	var bilingual contentdomain.Content
+	client.json(http.MethodPost, workspaceBase+"/contents/"+content.ID.String()+"/localizations", map[string]any{"locale": "en", "slug": "smoke-test-en", "source_locale": "zh-CN"}, &bilingual, http.StatusCreated)
+	var englishID uuid.UUID
+	for _, item := range bilingual.Localizations {
+		if item.Locale == "en" {
+			englishID = item.ID
+		}
+	}
+	if englishID == uuid.Nil {
+		t.Fatal("English localization was not created")
+	}
+	var translated contentdomain.Draft
+	client.json(http.MethodPost, workspaceBase+"/localizations/"+englishID.String()+":translate", map[string]any{"source_localization_id": localizationID}, &translated, http.StatusOK)
+	if translated.Title != "Smoke Test EN" || !strings.Contains(string(translated.Body), "Translated body") {
+		t.Fatalf("unexpected AI translation: %#v", translated)
+	}
 	client.json(http.MethodPost, workspaceBase+"/localizations/"+localizationID.String()+":mark-ready", nil, nil, http.StatusNoContent)
 	client.json(http.MethodPost, workspaceBase+"/publications", map[string]any{"content_id": content.ID, "locale": "zh-CN"}, &map[string]any{}, http.StatusAccepted)
 	waitForPublishedPage(t, client.base, fixture.workspace, "zh-CN", "article", "smoke-test")
@@ -230,6 +246,15 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	if asset.StorageProfileID == nil || *asset.StorageProfileID != storage.ID {
 		t.Fatalf("asset did not retain storage profile: %#v", asset)
 	}
+	assetResponse, err := http.Get(client.base + "/v1/public/assets/" + asset.ID.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	served, err := io.ReadAll(assetResponse.Body)
+	_ = assetResponse.Body.Close()
+	if err != nil || assetResponse.StatusCode != http.StatusOK || string(served) != string(image) {
+		t.Fatalf("public asset was not served correctly: status=%d err=%v", assetResponse.StatusCode, err)
+	}
 	var switchedStorage settingsdomain.StorageProfile
 	client.json(http.MethodPut, workspaceBase+"/settings/storage", map[string]any{"id": storage.ID, "name": "Smoke Files Next", "provider": "filesystem", "base_path": "next"}, &switchedStorage, http.StatusOK)
 	if switchedStorage.ID == storage.ID {
@@ -317,7 +342,14 @@ func newFakeOpenAIProvider(t *testing.T) *httptest.Server {
 		case "/v1/models":
 			_, _ = w.Write([]byte(`{"data":[{"id":"smoke-model-z"},{"id":"smoke-model"}]}`))
 		case "/v1/chat/completions":
-			_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"OK"}}],"usage":{"prompt_tokens":2,"completion_tokens":1}}`))
+			payload, _ := io.ReadAll(r.Body)
+			if strings.Contains(string(payload), `source_locale`) {
+				translated := `{"title":"Smoke Test EN","summary":"Smoke summary EN","body":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Translated body"}]}]},"metadata":{}}`
+				response, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"message": map[string]any{"content": translated}}}, "usage": map[string]int{"prompt_tokens": 20, "completion_tokens": 10}})
+				_, _ = w.Write(response)
+			} else {
+				_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"OK"}}],"usage":{"prompt_tokens":2,"completion_tokens":1}}`))
+			}
 		default:
 			http.NotFound(w, r)
 		}

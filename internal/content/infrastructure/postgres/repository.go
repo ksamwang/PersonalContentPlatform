@@ -103,7 +103,8 @@ func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, locale, st
 		return nil, err
 	}
 	defer rows.Close()
-	return scanContentRows(rows)
+	items, err := scanContentRows(rows)
+	return aggregateContents(items), err
 }
 func (r *Repository) Get(ctx context.Context, workspaceID, contentID uuid.UUID) (domain.Content, error) {
 	rows, err := r.db.Query(ctx, `SELECT c.object_id,c.workspace_id,c.type,c.default_locale,c.visibility,c.created_at,c.updated_at,l.id,l.locale,l.state,l.slug,l.translation_status,l.updated_at,rv.id,rv.seq,rv.schema_version,rv.title,rv.summary,rv.body_json,rv.metadata_json,rv.content_hash,rv.created_at FROM contents c JOIN content_localizations l ON l.content_id=c.object_id LEFT JOIN content_revisions rv ON rv.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.object_id=$2 AND l.deleted_at IS NULL ORDER BY l.locale`, workspaceID, contentID)
@@ -188,6 +189,19 @@ func scanContentRows(rows pgx.Rows) ([]domain.Content, error) {
 		result = append(result, c)
 	}
 	return result, rows.Err()
+}
+func aggregateContents(items []domain.Content) []domain.Content {
+	result := make([]domain.Content, 0, len(items))
+	positions := map[uuid.UUID]int{}
+	for _, item := range items {
+		if position, ok := positions[item.ID]; ok {
+			result[position].Localizations = append(result[position].Localizations, item.Localizations...)
+			continue
+		}
+		positions[item.ID] = len(result)
+		result = append(result, item)
+	}
+	return result
 }
 
 func (r *Repository) SaveDraft(ctx context.Context, workspaceID, userID, localizationID uuid.UUID, expected int, title, summary string, body, metadata json.RawMessage) (domain.Draft, error) {
@@ -287,7 +301,8 @@ func (r *Repository) Search(ctx context.Context, workspaceID uuid.UUID, locale, 
 		return nil, err
 	}
 	defer rows.Close()
-	return scanContentRows(rows)
+	items, err := scanContentRows(rows)
+	return aggregateContents(items), err
 }
 
 func (r *Repository) ListRevisions(ctx context.Context, workspaceID, localizationID uuid.UUID, limit int) ([]domain.Revision, error) {
