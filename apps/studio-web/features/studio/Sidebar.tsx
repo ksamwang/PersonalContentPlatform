@@ -27,10 +27,9 @@ export function Sidebar({ onNavigate, onSearch, view, publicSite }: { onNavigate
           <Inbox aria-hidden size={19} />
           <span>收件箱</span>
         </button>
-        <button disabled title="合集将在后续版本开放">
+        <button className={view === "collections" ? "active" : ""} onClick={()=>onNavigate("collections")}>
           <Shapes aria-hidden size={19} />
           <span>合集</span>
-          <small>规划中</small>
         </button>
         <button onClick={onSearch}>
           <Search aria-hidden size={19} />

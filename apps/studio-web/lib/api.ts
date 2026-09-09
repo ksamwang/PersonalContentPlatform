@@ -59,6 +59,9 @@ export type WorkspaceSettings = { general: GeneralSettings; storage: StorageSett
 export type WebhookEndpoint = {id:string;name:string;url:string;secret_set:boolean;enabled:boolean;event_types:string[]};
 export type InboxItem = { id:string; kind:"text"|"link"; raw_text:string; source_url?:string; state:"pending"|"converted"|"archived"; converted_content_id?:string; created_at:string; updated_at:string };
 export type InboxConversion = { inbox_id:string; content_id:string; localization_id:string };
+export type CollectionItem = {id:string;object_id:string;title:string;sort_key:number;annotation:string};
+export type CollectionSection = {id:string;title:string;sort_key:number;items:CollectionItem[]};
+export type Collection = {id:string;workspace_id:string;title:string;slug:string;visibility:"private"|"unlisted"|"public";sections:CollectionSection[]};
 export class APIError extends Error {
   constructor(
     public status: number,
@@ -188,4 +191,13 @@ export const api = {
   captureInbox: (ws:string,value:{kind:"text"|"link";raw_text:string;source_url?:string}) => request<InboxItem>(`/v1/workspaces/${ws}/inbox/`,{method:"POST",body:JSON.stringify(value)}),
   archiveInbox: (ws:string,id:string) => request<void>(`/v1/workspaces/${ws}/inbox/${id}:archive`,{method:"POST"}),
   convertInbox: (ws:string,id:string,value:{type:Content["type"];locale:string;slug:string;title:string}) => request<InboxConversion>(`/v1/workspaces/${ws}/inbox/${id}:convert`,{method:"POST",body:JSON.stringify(value)}),
+  collections: (ws:string) => requestItems<Collection>(`/v1/workspaces/${ws}/collections`),
+  collection: (ws:string,id:string) => request<Collection>(`/v1/workspaces/${ws}/collections/${id}`),
+  createCollection: (ws:string,value:{title:string;slug:string;visibility:string}) => request<Collection>(`/v1/workspaces/${ws}/collections`,{method:"POST",body:JSON.stringify(value)}),
+  updateCollection: (ws:string,id:string,value:{title:string;slug:string;visibility:string}) => request<Collection>(`/v1/workspaces/${ws}/collections/${id}`,{method:"PUT",body:JSON.stringify(value)}),
+  addCollectionSection: (ws:string,id:string,title:string) => request<CollectionSection>(`/v1/workspaces/${ws}/collections/${id}/sections`,{method:"POST",body:JSON.stringify({title})}),
+  moveCollectionSection: (ws:string,collectionID:string,sectionID:string,direction:-1|1) => request<void>(`/v1/workspaces/${ws}/collections/${collectionID}/sections/${sectionID}:move`,{method:"POST",body:JSON.stringify({direction})}),
+  addCollectionItem: (ws:string,sectionID:string,objectID:string) => request<CollectionItem>(`/v1/workspaces/${ws}/collection-sections/${sectionID}/items`,{method:"POST",body:JSON.stringify({object_id:objectID})}),
+  moveCollectionItem: (ws:string,itemID:string,direction:-1|1) => request<void>(`/v1/workspaces/${ws}/collection-items/${itemID}:move`,{method:"POST",body:JSON.stringify({direction})}),
+  removeCollectionItem: (ws:string,itemID:string) => request<void>(`/v1/workspaces/${ws}/collection-items/${itemID}`,{method:"DELETE"}),
 };

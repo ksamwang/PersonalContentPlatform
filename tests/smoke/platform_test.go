@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	assetdomain "github.com/ksamwang/PersonalContentPlatform/internal/asset/domain"
+	collectiondomain "github.com/ksamwang/PersonalContentPlatform/internal/collection/domain"
 	contentdomain "github.com/ksamwang/PersonalContentPlatform/internal/content/domain"
 	inboxdomain "github.com/ksamwang/PersonalContentPlatform/internal/inbox/domain"
 	integrationdomain "github.com/ksamwang/PersonalContentPlatform/internal/integration/domain"
@@ -139,6 +140,31 @@ func TestCorePlatformWorkflows(t *testing.T) {
 		t.Fatal(err)
 	}
 	client.json(http.MethodPost, workspaceBase+"/inbox/", map[string]any{"kind": "text", "raw_text": "forbidden"}, nil, http.StatusForbidden)
+	if _, err := fixture.db.Exec(t.Context(), `UPDATE memberships SET role='owner' WHERE workspace_id=$1 AND user_id=$2`, fixture.workspaceID, fixture.userID); err != nil {
+		t.Fatal(err)
+	}
+
+	var collection collectiondomain.Collection
+	client.json(http.MethodPost, workspaceBase+"/collections", map[string]any{
+		"title": "Smoke Collection", "slug": "smoke-collection", "visibility": "private",
+	}, &collection, http.StatusCreated)
+	var sectionOne, sectionTwo collectiondomain.Section
+	client.json(http.MethodPost, workspaceBase+"/collections/"+collection.ID.String()+"/sections", map[string]any{"title": "First"}, &sectionOne, http.StatusCreated)
+	client.json(http.MethodPost, workspaceBase+"/collections/"+collection.ID.String()+"/sections", map[string]any{"title": "Second"}, &sectionTwo, http.StatusCreated)
+	client.json(http.MethodPost, workspaceBase+"/collections/"+collection.ID.String()+"/sections/"+sectionTwo.ID.String()+":move", map[string]any{"direction": -1}, nil, http.StatusNoContent)
+	var firstItem, secondItem collectiondomain.Item
+	client.json(http.MethodPost, workspaceBase+"/collection-sections/"+sectionOne.ID.String()+"/items", map[string]any{"object_id": content.ID}, &firstItem, http.StatusCreated)
+	client.json(http.MethodPost, workspaceBase+"/collection-sections/"+sectionOne.ID.String()+"/items", map[string]any{"object_id": conversion.ContentID}, &secondItem, http.StatusCreated)
+	client.json(http.MethodPost, workspaceBase+"/collection-items/"+secondItem.ID.String()+":move", map[string]any{"direction": -1}, nil, http.StatusNoContent)
+	client.json(http.MethodGet, workspaceBase+"/collections/"+collection.ID.String(), nil, &collection, http.StatusOK)
+	if len(collection.Sections) != 2 || collection.Sections[0].ID != sectionTwo.ID || len(collection.Sections[1].Items) != 2 || collection.Sections[1].Items[0].ID != secondItem.ID {
+		t.Fatalf("collection ordering was not preserved: %#v", collection)
+	}
+	client.json(http.MethodDelete, workspaceBase+"/collection-items/"+firstItem.ID.String(), nil, nil, http.StatusNoContent)
+	if _, err := fixture.db.Exec(t.Context(), `UPDATE memberships SET role='viewer' WHERE workspace_id=$1 AND user_id=$2`, fixture.workspaceID, fixture.userID); err != nil {
+		t.Fatal(err)
+	}
+	client.json(http.MethodPost, workspaceBase+"/collections", map[string]any{"title": "Forbidden", "slug": "forbidden", "visibility": "private"}, nil, http.StatusForbidden)
 	if _, err := fixture.db.Exec(t.Context(), `UPDATE memberships SET role='owner' WHERE workspace_id=$1 AND user_id=$2`, fixture.workspaceID, fixture.userID); err != nil {
 		t.Fatal(err)
 	}

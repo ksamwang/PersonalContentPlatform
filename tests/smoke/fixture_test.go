@@ -111,6 +111,12 @@ func cleanupSmokeData(t *testing.T, db *pgxpool.Pool, workspaceID, userID, blobI
 		t.Errorf("clean publications: %v", err)
 		return
 	}
+	// collection_items references workspace-owned objects without ON DELETE
+	// CASCADE, so remove the join rows before the object graph.
+	if _, err = tx.Exec(ctx, `DELETE FROM collection_items WHERE workspace_id=$1`, workspaceID); err != nil {
+		t.Errorf("clean collection items: %v", err)
+		return
+	}
 	if _, err = tx.Exec(ctx, `DELETE FROM workspaces WHERE id=$1`, workspaceID); err != nil {
 		t.Errorf("clean workspace: %v", err)
 		return

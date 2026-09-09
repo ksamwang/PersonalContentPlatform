@@ -11,6 +11,7 @@ import { CreateContent } from "./CreateContent";
 import { Sidebar } from "./Sidebar";
 import { SettingsPanel } from "../settings/SettingsPanel";
 import { InboxPanel } from "../inbox/InboxPanel";
+import { CollectionsPanel } from "../collections/CollectionsPanel";
 import { StudioView } from "./Sidebar";
 export function StudioApp() {
   const [user, setUser] = useState<Principal | null | undefined>(undefined),
@@ -67,6 +68,8 @@ export function StudioApp() {
           <SettingsPanel workspace={user.WorkspaceID} role={user.Role} />
         ) : view === "inbox" ? (
           <InboxPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{const content=await api.content(user.WorkspaceID,id);setSelected(content);setView("content");void load(user,"")}catch(err){setLoadError(err instanceof Error?err.message:"内容加载失败");setView("content")}}}/>
+        ) : view === "collections" ? (
+          <CollectionsPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{const content=await api.content(user.WorkspaceID,id);setSelected(content);setView("content")}catch(err){setLoadError(err instanceof Error?err.message:"内容加载失败");setView("content")}}}/>
         ) : (<>
         <header className="topbar">
           <div>
