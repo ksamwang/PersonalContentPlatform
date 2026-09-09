@@ -56,6 +56,25 @@ func (s *Service) Create(ctx context.Context, workspaceID, userID uuid.UUID, kin
 	}
 	return s.repo.Create(ctx, workspaceID, userID, kind, locale, slug, strings.TrimSpace(title))
 }
+func (s *Service) CreateLocalization(ctx context.Context, workspaceID, userID, contentID uuid.UUID, locale, slug, sourceLocale string) (domain.Content, error) {
+	supported := s.supported
+	if s.settings != nil {
+		if configured, err := s.settings.Get(ctx, workspaceID); err == nil {
+			supported = map[string]bool{}
+			for _, item := range configured.Workspace.SupportedLocales {
+				supported[item] = true
+			}
+		}
+	}
+	if !supported[locale] || locale == sourceLocale {
+		return domain.Content{}, fmt.Errorf("unsupported target locale")
+	}
+	slug = strings.ToLower(strings.TrimSpace(slug))
+	if !slugPattern.MatchString(slug) {
+		return domain.Content{}, fmt.Errorf("slug must contain lowercase letters, numbers and hyphens")
+	}
+	return s.repo.CreateLocalization(ctx, workspaceID, userID, contentID, locale, slug, sourceLocale)
+}
 func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, locale, state string, limit int) ([]domain.Content, error) {
 	if limit < 1 || limit > 100 {
 		limit = 30

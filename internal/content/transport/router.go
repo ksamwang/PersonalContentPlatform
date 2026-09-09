@@ -25,6 +25,7 @@ func (h *HTTP) Register(r chi.Router) {
 			r.Use(workspaceScope)
 			r.Get("/contents", h.list)
 			r.Post("/contents", h.create)
+			r.Post("/contents/{contentID}/localizations", h.createLocalization)
 			r.Get("/contents/{contentID}", h.get)
 			r.Patch("/contents/{contentID}", h.updateProperties)
 			r.Put("/localizations/{localizationID}/draft", h.saveDraft)

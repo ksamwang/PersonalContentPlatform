@@ -58,6 +58,33 @@ func (r *Repository) Create(ctx context.Context, workspaceID, userID uuid.UUID, 
 	return r.Get(ctx, workspaceID, contentID)
 }
 
+func (r *Repository) CreateLocalization(ctx context.Context, workspaceID, userID, contentID uuid.UUID, locale, slug, sourceLocale string) (domain.Content, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return domain.Content{}, err
+	}
+	defer tx.Rollback(ctx)
+	var sourceRevisionID *uuid.UUID
+	if err = tx.QueryRow(ctx, `SELECT l.current_revision_id FROM content_localizations l WHERE l.workspace_id=$1 AND l.content_id=$2 AND l.locale=$3 AND l.deleted_at IS NULL`, workspaceID, contentID, sourceLocale).Scan(&sourceRevisionID); err != nil {
+		return domain.Content{}, err
+	}
+	localizationID := id.New()
+	body := json.RawMessage(`{"schemaVersion":1,"type":"doc","content":[]}`)
+	if _, err = tx.Exec(ctx, `INSERT INTO content_localizations(id,workspace_id,content_id,locale,slug,translation_status,source_locale,source_revision_id) VALUES($1,$2,$3,$4,$5,'missing',$6,$7)`, localizationID, workspaceID, contentID, locale, slug, sourceLocale, sourceRevisionID); err != nil {
+		return domain.Content{}, err
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO draft_buffers(localization_id,workspace_id,body_json,updated_by) VALUES($1,$2,$3,$4)`, localizationID, workspaceID, body, userID); err != nil {
+		return domain.Content{}, err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE contents SET updated_at=now() WHERE object_id=$1 AND workspace_id=$2`, contentID, workspaceID); err != nil {
+		return domain.Content{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return domain.Content{}, err
+	}
+	return r.Get(ctx, workspaceID, contentID)
+}
+
 func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, locale, state string, limit int) ([]domain.Content, error) {
 	query := `SELECT c.object_id,c.workspace_id,c.type,c.default_locale,c.visibility,c.created_at,c.updated_at,l.id,l.locale,l.state,l.slug,l.translation_status,l.updated_at,rv.id,rv.seq,rv.schema_version,rv.title,rv.summary,rv.body_json,rv.metadata_json,rv.content_hash,rv.created_at FROM contents c JOIN content_localizations l ON l.content_id=c.object_id LEFT JOIN content_revisions rv ON rv.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.visibility IS NOT NULL AND l.deleted_at IS NULL`
 	args := []any{workspaceID}
@@ -185,8 +212,9 @@ func (r *Repository) SealRevision(ctx context.Context, workspaceID, userID, loca
 		return domain.Revision{}, application.ErrConflict
 	}
 	var contentID uuid.UUID
+	var locale string
 	var nextSeq int
-	if err = tx.QueryRow(ctx, `SELECT l.content_id,COALESCE(MAX(r.seq),0)+1 FROM content_localizations l LEFT JOIN content_revisions r ON r.localization_id=l.id WHERE l.id=$1 AND l.workspace_id=$2 GROUP BY l.content_id`, localizationID, workspaceID).Scan(&contentID, &nextSeq); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT l.content_id,l.locale,COALESCE(MAX(r.seq),0)+1 FROM content_localizations l LEFT JOIN content_revisions r ON r.localization_id=l.id WHERE l.id=$1 AND l.workspace_id=$2 GROUP BY l.content_id,l.locale`, localizationID, workspaceID).Scan(&contentID, &locale, &nextSeq); err != nil {
 		return domain.Revision{}, err
 	}
 	revisionID := id.New()
@@ -194,10 +222,13 @@ func (r *Repository) SealRevision(ctx context.Context, workspaceID, userID, loca
 	if _, err = tx.Exec(ctx, `INSERT INTO content_revisions(id,workspace_id,localization_id,seq,title,summary,body_json,metadata_json,content_hash,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, revisionID, workspaceID, localizationID, nextSeq, d.Title, d.Summary, d.Body, d.Metadata, hash, userID); err != nil {
 		return domain.Revision{}, err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE content_localizations SET current_revision_id=$1,updated_at=now() WHERE id=$2`, revisionID, localizationID); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE content_localizations SET current_revision_id=$1,translation_status=CASE WHEN source_locale IS NOT NULL AND translation_status='missing' THEN 'draft' ELSE translation_status END,updated_at=now() WHERE id=$2`, revisionID, localizationID); err != nil {
 		return domain.Revision{}, err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE contents SET updated_at=now() WHERE object_id=$1`, contentID); err != nil {
+		return domain.Revision{}, err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE content_localizations SET translation_status='outdated',updated_at=now() WHERE content_id=$1 AND source_locale=$2 AND id<>$3 AND translation_status IN ('draft','needs_review','ready','published')`, contentID, locale, localizationID); err != nil {
 		return domain.Revision{}, err
 	}
 	if err = outbox.Add(ctx, tx, workspaceID, contentID, "content", "ContentRevisionCreated", map[string]any{"content_id": contentID, "revision_id": revisionID}); err != nil {

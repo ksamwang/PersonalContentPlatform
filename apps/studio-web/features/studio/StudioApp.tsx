@@ -127,6 +127,7 @@ export function StudioApp() {
               role={user.Role}
               publicSite={publicSite}
               onChanged={() => void load(user, query)}
+              onContentChanged={setSelected}
             />
           ) : (
             <section className="welcome-panel">

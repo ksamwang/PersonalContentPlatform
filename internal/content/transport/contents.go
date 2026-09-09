@@ -7,6 +7,34 @@ import (
 	"strconv"
 )
 
+type createLocalizationInput struct {
+	Locale       string `json:"locale"`
+	Slug         string `json:"slug"`
+	SourceLocale string `json:"source_locale"`
+}
+
+func (h *HTTP) createLocalization(w http.ResponseWriter, r *http.Request) {
+	if !editorRequired(w, r) {
+		return
+	}
+	contentID, ok := parseID(w, r, "contentID")
+	if !ok {
+		return
+	}
+	var input createLocalizationInput
+	if err := httpx.Decode(w, r, &input); err != nil {
+		httpx.Error(w, 400, "invalid_request", err.Error())
+		return
+	}
+	workspaceID, userID := principal(r)
+	content, err := h.service.CreateLocalization(r.Context(), workspaceID, userID, contentID, input.Locale, input.Slug, input.SourceLocale)
+	if err != nil {
+		httpx.Error(w, 422, "localization_invalid", err.Error())
+		return
+	}
+	httpx.JSON(w, 201, content)
+}
+
 type createInput struct {
 	Type   domain.Type `json:"type"`
 	Locale string      `json:"locale"`

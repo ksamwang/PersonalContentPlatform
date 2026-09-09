@@ -10,6 +10,7 @@ import (
 
 type Repository interface {
 	Create(context.Context, uuid.UUID, uuid.UUID, domain.Type, string, string, string) (domain.Content, error)
+	CreateLocalization(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, string, string) (domain.Content, error)
 	List(context.Context, uuid.UUID, string, string, int) ([]domain.Content, error)
 	Get(context.Context, uuid.UUID, uuid.UUID) (domain.Content, error)
 	UpdateProperties(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, domain.Visibility) error

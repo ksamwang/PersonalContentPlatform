@@ -129,6 +129,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  createLocalization: (ws:string,contentID:string,value:{locale:string;slug:string;source_locale:string}) =>
+    request<Content>(`/v1/workspaces/${ws}/contents/${contentID}/localizations`,{method:"POST",body:JSON.stringify(value)}),
   draft: (ws: string, id: string) =>
     request<Draft>(`/v1/workspaces/${ws}/localizations/${id}/draft`),
   saveDraft: (ws: string, id: string, input: SaveDraftInput) =>

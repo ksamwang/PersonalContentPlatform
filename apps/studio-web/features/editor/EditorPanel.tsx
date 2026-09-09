@@ -8,20 +8,24 @@ import { EditorToolbar } from "./EditorToolbar";
 import { RevisionPanel } from "./RevisionPanel";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { editorExtensions } from "./extensions";
+import { LocalizationTabs } from "./LocalizationTabs";
 export function EditorPanel({
   workspace,
   content,
   onChanged,
+  onContentChanged,
   role,
   publicSite,
 }: {
   workspace: string;
   content: Content;
   onChanged: () => void;
+  onContentChanged: (content:Content) => void;
   role: string;
   publicSite: string;
 }) {
-  const localization = content.localizations[0];
+  const [activeLocalizationID,setActiveLocalizationID]=useState(content.localizations[0].id);
+  const localization = content.localizations.find(item=>item.id===activeLocalizationID)??content.localizations[0];
   const canEdit = role === "owner" || role === "editor";
   const [draft, setDraft] = useState<Draft | null>(null),
     [title, setTitle] = useState(""),
@@ -165,6 +169,7 @@ export function EditorPanel({
   function applyRestoredDraft(next:Draft){setDraft(next);draftRef.current=next;setTitle(next.title);titleRef.current=next.title;setSummary(next.summary);summaryRef.current=next.summary;editor?.commands.setContent(next.body,{emitUpdate:false});setStatus("旧版本已恢复到草稿")}
   function updateMetadata(metadata:Record<string,unknown>){if(!draftRef.current)return;const next={...draftRef.current,metadata};setDraft(next);draftRef.current=next;scheduleSave()}
   async function openProperties(){setPropertiesOpen(true);try{setReadiness(await api.readiness(workspace,localization.id))}catch{setReadiness(null)}}
+  async function switchLocalization(id:string){if(id===localization.id)return;if(timer.current)clearTimeout(timer.current);await save();setActiveLocalizationID(id);setHistoryOpen(false);setPropertiesOpen(false);setReadiness(null)}
   async function waitUntilPublished() {
     for (let attempt = 0; attempt < 20; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -190,6 +195,7 @@ export function EditorPanel({
     return <section className="editor-panel skeleton" aria-busy="true" />;
   return (
     <section className={`editor-panel${focusMode?" focus-mode":""}`}>
+      <LocalizationTabs workspace={workspace} content={content} active={localization.id} canEdit={canEdit} onSelect={id=>void switchLocalization(id)} onCreated={(next,targetID)=>{onContentChanged(next);setActiveLocalizationID(targetID)}}/>
       <header className="editor-header">
         <div>
           <span className="eyebrow">
