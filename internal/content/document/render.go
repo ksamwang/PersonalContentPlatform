@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"html"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -136,7 +137,11 @@ func renderNode(out *bytes.Buffer, n Node) {
 			if strings.HasPrefix(src, "/media/") && strings.Count(src, "/") == 2 {
 				src += "/content-1280"
 			}
-			out.WriteString(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(stringAttr(n.Attrs["alt"])) + `">`)
+			width := ""
+			if value, ok := n.Attrs["width"].(float64); ok && value > 0 {
+				width = ` width="` + strconv.Itoa(int(value)) + `"`
+			}
+			out.WriteString(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(stringAttr(n.Attrs["alt"])) + `"` + width + `>`)
 		}
 	case "table":
 		out.WriteString("<table>")

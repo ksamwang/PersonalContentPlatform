@@ -23,9 +23,9 @@ func TestPlainTextFlattensDocument(t *testing.T) {
 }
 
 func TestHTMLRendersRichContent(t *testing.T) {
-	input := []byte(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Read","marks":[{"type":"bold"},{"type":"link","attrs":{"href":"https://example.com"}}]}]},{"type":"image","attrs":{"src":"/media/123","alt":"示例图片"}},{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"标题"}]}]}]}]}]}`)
+	input := []byte(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Read","marks":[{"type":"bold"},{"type":"link","attrs":{"href":"https://example.com"}}]}]},{"type":"image","attrs":{"src":"/media/123","alt":"示例图片","width":480}},{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"标题"}]}]}]}]}]}`)
 	got := HTML(input)
-	for _, want := range []string{`<a href="https://example.com"><strong>Read</strong></a>`, `<img src="/media/123/content-1280" alt="示例图片">`, `<table>`} {
+	for _, want := range []string{`<a href="https://example.com"><strong>Read</strong></a>`, `<img src="/media/123/content-1280" alt="示例图片" width="480">`, `<table>`} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("rendered HTML %q does not contain %q", got, want)
 		}
