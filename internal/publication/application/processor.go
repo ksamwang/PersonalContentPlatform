@@ -70,6 +70,16 @@ func (p *Processor) processOne(ctx context.Context) (bool, error) {
 		err = nil
 	}
 	if err != nil {
+		if e.Type == "PublicationRequested" {
+			var attempt int
+			_ = tx.QueryRow(ctx, `SELECT COALESCE(MAX(attempt_no),0)+1 FROM publication_attempts WHERE publication_id=$1`, e.AggregateID).Scan(&attempt)
+			_, _ = tx.Exec(ctx, `INSERT INTO publication_attempts(id,publication_id,attempt_no,status,error_message) VALUES($1,$2,$3,'failed',$4)`, id.New(), e.AggregateID, attempt, err.Error())
+			state := "retry_wait"
+			if e.Attempts >= 4 {
+				state = "dead"
+			}
+			_, _ = tx.Exec(ctx, `UPDATE publications SET state=$2,updated_at=now() WHERE id=$1`, e.AggregateID, state)
+		}
 		_, _ = tx.Exec(ctx, `UPDATE outbox_events SET attempts=attempts+1,last_error=$2,available_at=now()+interval '15 seconds' WHERE id=$1`, e.ID, err.Error())
 		return true, tx.Commit(ctx)
 	}
@@ -117,10 +127,14 @@ func (p *Processor) publishWebsite(ctx context.Context, tx pgx.Tx, e event) erro
 	var workspaceID, contentID, revisionID uuid.UUID
 	var locale, slug, kind, title, summary, visibility string
 	var body, metadata []byte
-	if _, err := tx.Exec(ctx, `UPDATE publications SET state='publishing',updated_at=now() WHERE id=$1 AND state IN ('queued','retry_wait')`, publicationID); err != nil {
+	tag, err := tx.Exec(ctx, `UPDATE publications SET state='publishing',updated_at=now() WHERE id=$1 AND state IN ('queued','retry_wait')`, publicationID)
+	if err != nil {
 		return err
 	}
-	err := tx.QueryRow(ctx, `SELECT p.workspace_id,p.content_id,p.revision_id,p.locale,l.slug,c.type,r.title,r.summary,c.visibility,r.body_json,r.metadata_json FROM publications p JOIN contents c ON c.object_id=p.content_id JOIN content_localizations l ON l.content_id=p.content_id AND l.locale=p.locale JOIN content_revisions r ON r.id=p.revision_id JOIN publication_targets t ON t.id=p.target_id WHERE p.id=$1 AND t.channel='website'`, publicationID).Scan(&workspaceID, &contentID, &revisionID, &locale, &slug, &kind, &title, &summary, &visibility, &body, &metadata)
+	if tag.RowsAffected() == 0 {
+		return nil
+	}
+	err = tx.QueryRow(ctx, `SELECT p.workspace_id,p.content_id,p.revision_id,p.locale,l.slug,c.type,r.title,r.summary,c.visibility,r.body_json,r.metadata_json FROM publications p JOIN contents c ON c.object_id=p.content_id JOIN content_localizations l ON l.content_id=p.content_id AND l.locale=p.locale JOIN content_revisions r ON r.id=p.revision_id JOIN publication_targets t ON t.id=p.target_id WHERE p.id=$1 AND t.channel='website'`, publicationID).Scan(&workspaceID, &contentID, &revisionID, &locale, &slug, &kind, &title, &summary, &visibility, &body, &metadata)
 	if err != nil {
 		return err
 	}

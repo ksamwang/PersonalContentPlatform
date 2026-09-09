@@ -17,6 +17,7 @@ import { ContentFilters, ContentFilter, emptyContentFilter } from "./ContentFilt
 import { DiscoverPanel } from "./DiscoverPanel";
 import { KnowledgePanel } from "../knowledge/KnowledgePanel";
 import { AIAssistantPanel } from "../ai/AIAssistantPanel";
+import { PublicationPanel } from "../publication/PublicationPanel";
 export function StudioApp() {
   const [user, setUser] = useState<Principal | null | undefined>(undefined),
     [items, setItems] = useState<Content[]>([]),
@@ -92,6 +93,8 @@ export function StudioApp() {
           <AIAssistantPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{setSelected(await api.content(user.WorkspaceID,id));setView("content")}catch(error){setLoadError(error instanceof Error?error.message:"内容加载失败")}}}/>
         ) : view === "discover" ? (
           <DiscoverPanel workspace={user.WorkspaceID} role={user.Role} onOpen={content=>{setSelected(content);setView("content")}}/>
+        ) : view === "publication" ? (
+          <PublicationPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{setSelected(await api.content(user.WorkspaceID,id));setView("content")}catch(error){setLoadError(error instanceof Error?error.message:"内容加载失败")}}}/>
         ) : (<>
         <header className="topbar">
           <div>

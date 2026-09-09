@@ -9,9 +9,10 @@ import {
   Settings2,
   Sparkles,
   Shapes,
+  Send,
 } from "lucide-react";
 
-export type StudioView = "content"|"inbox"|"collections"|"assets"|"knowledge"|"ai"|"discover"|"settings";
+export type StudioView = "content"|"inbox"|"collections"|"assets"|"knowledge"|"ai"|"discover"|"publication"|"settings";
 export function Sidebar({ onNavigate, view, publicSite, userLabel, onLogout }: { onNavigate: (view:StudioView) => void; view: StudioView; publicSite:string; userLabel:string; onLogout:()=>void }) {
   return (
     <aside className="sidebar">
@@ -42,6 +43,7 @@ export function Sidebar({ onNavigate, view, publicSite, userLabel, onLogout }: {
           <Search aria-hidden size={19} />
           <span>发现</span>
         </button>
+        <button className={view === "publication" ? "active" : ""} onClick={()=>onNavigate("publication")}><Send aria-hidden size={19}/><span>发布</span></button>
         <a href={publicSite} target="_blank" rel="noreferrer">
           <BookOpen aria-hidden size={19} />
           <span>发布站点</span>

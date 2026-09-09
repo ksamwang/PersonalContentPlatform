@@ -83,6 +83,8 @@ export type KnowledgeRelation={id:string;source_id:string;target_id:string;predi
 export type KnowledgeMention={id:string;revision_id:string;entity_id:string;entity_name:string;content_id:string;content_title:string;locale:string;confidence:number;confirmed:boolean;created_at:string};
 export type AISuggestion={id:string;target_id:string;target_title:string;kind:string;payload:{text?:string};state:"pending"|"accepted"|"rejected";created_at:string};
 export type AIRun={id:string;purpose:string;provider:string;model:string;status:"running"|"succeeded"|"failed";usage:{input_tokens?:number;output_tokens?:number};error_code:string;started_at:string;completed_at?:string};
+export type PublicationRecord={id:string;content_id:string;title:string;locale:string;channel:string;state:string;scheduled_at?:string;published_at?:string;attempts:number;last_error:string;created_at:string};
+export type PublicationChannel={channel:string;name:string;status:string;detail:string};
 export class APIError extends Error {
   constructor(
     public status: number,
@@ -266,5 +268,10 @@ export const api = {
   rebuildSearchIndex:(ws:string)=>request<{chunks:number}>(`/v1/workspaces/${ws}/search:index`,{method:"POST"}),
   hybridSearch:(ws:string,q:string,locale="")=>requestItems<SearchHit>(`/v1/workspaces/${ws}/hybrid-search?q=${encodeURIComponent(q)}${locale?`&locale=${encodeURIComponent(locale)}`:""}`),
   rag:(ws:string,query:string,locale="")=>request<{answer:string;sources:SearchHit[]}>(`/v1/workspaces/${ws}/rag`,{method:"POST",body:JSON.stringify({query,locale})}),
+  publicationRecords:(ws:string)=>requestItems<PublicationRecord>(`/v1/workspaces/${ws}/publication-records`),
+  publicationChannels:(ws:string)=>requestItems<PublicationChannel>(`/v1/workspaces/${ws}/publication-channels`),
+  schedulePublication:(ws:string,value:{content_id:string;locale:string;scheduled_at:string})=>request<{publication_id:string}>(`/v1/workspaces/${ws}/publication-records:schedule`,{method:"POST",body:JSON.stringify(value)}),
+  retryPublication:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/publication-records/${id}:retry`,{method:"POST"}),
+  withdrawPublication:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/publication-records/${id}:withdraw`,{method:"POST"}),
 };
 export type SearchHit={content_id:string;title:string;summary:string;locale:string;type:string;slug:string;excerpt:string;score:number};

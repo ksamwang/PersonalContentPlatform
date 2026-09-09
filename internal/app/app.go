@@ -32,6 +32,7 @@ import (
 	knowledgehttp "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/transport"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/health"
+	publicationapp "github.com/ksamwang/PersonalContentPlatform/internal/publication/application"
 	publicationhttp "github.com/ksamwang/PersonalContentPlatform/internal/publication/transport"
 	retrievalapp "github.com/ksamwang/PersonalContentPlatform/internal/retrieval/application"
 	retrievalhttp "github.com/ksamwang/PersonalContentPlatform/internal/retrieval/transport"
@@ -43,19 +44,20 @@ import (
 )
 
 type App struct {
-	DB          *pgxpool.Pool
-	StartedAt   time.Time
-	identity    *identityhttp.HTTP
-	content     *contenthttp.HTTP
-	public      *publicationhttp.HTTP
-	asset       *assethttp.HTTP
-	knowledge   *knowledgehttp.HTTP
-	ai          *aihttp.HTTP
-	integration *integrationhttp.HTTP
-	settings    *settingshttp.HTTP
-	inbox       *inboxhttp.HTTP
-	collection  *collectionhttp.HTTP
-	retrieval   *retrievalhttp.HTTP
+	DB               *pgxpool.Pool
+	StartedAt        time.Time
+	identity         *identityhttp.HTTP
+	content          *contenthttp.HTTP
+	public           *publicationhttp.HTTP
+	publicationAdmin *publicationhttp.AdminHTTP
+	asset            *assethttp.HTTP
+	knowledge        *knowledgehttp.HTTP
+	ai               *aihttp.HTTP
+	integration      *integrationhttp.HTTP
+	settings         *settingshttp.HTTP
+	inbox            *inboxhttp.HTTP
+	collection       *collectionhttp.HTTP
+	retrieval        *retrievalhttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -78,19 +80,20 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 	aiService := aiapp.New(db, openai.NewResolver(settingsRepository, openai.New(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)))
 	integrationRepository := integrationpg.New(db)
 	return &App{
-		DB:          db,
-		StartedAt:   time.Now().UTC(),
-		identity:    identityTransport,
-		content:     contenthttp.NewHTTP(contentService, identityTransport.RequireSession),
-		public:      publicationhttp.NewHTTP(db),
-		asset:       assethttp.NewHTTP(assetService, identityTransport.RequireSession),
-		knowledge:   knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession),
-		ai:          aihttp.NewHTTP(aiService, identityTransport.RequireSession),
-		integration: integrationhttp.NewHTTP(integrationapp.NewExportService(integrationRepository), integrationapp.NewWebhookService(integrationRepository), identityTransport.RequireSession),
-		settings:    settingshttp.NewHTTP(settingsapp.New(settingsRepository, cfg.StorageBasePath), identityTransport.RequireSession),
-		inbox:       inboxhttp.NewHTTP(inboxapp.New(inboxpg.New(db), cfg.SupportedLocales, settingsRepository, assetService), identityTransport.RequireSession),
-		collection:  collectionhttp.NewHTTP(collectionapp.New(collectionpg.New(db)), identityTransport.RequireSession),
-		retrieval:   retrievalhttp.NewHTTP(retrievalapp.New(db, settingsRepository), identityTransport.RequireSession),
+		DB:               db,
+		StartedAt:        time.Now().UTC(),
+		identity:         identityTransport,
+		content:          contenthttp.NewHTTP(contentService, identityTransport.RequireSession),
+		public:           publicationhttp.NewHTTP(db),
+		publicationAdmin: publicationhttp.NewAdminHTTP(publicationapp.NewService(db), identityTransport.RequireSession),
+		asset:            assethttp.NewHTTP(assetService, identityTransport.RequireSession),
+		knowledge:        knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession),
+		ai:               aihttp.NewHTTP(aiService, identityTransport.RequireSession),
+		integration:      integrationhttp.NewHTTP(integrationapp.NewExportService(integrationRepository), integrationapp.NewWebhookService(integrationRepository), identityTransport.RequireSession),
+		settings:         settingshttp.NewHTTP(settingsapp.New(settingsRepository, cfg.StorageBasePath), identityTransport.RequireSession),
+		inbox:            inboxhttp.NewHTTP(inboxapp.New(inboxpg.New(db), cfg.SupportedLocales, settingsRepository, assetService), identityTransport.RequireSession),
+		collection:       collectionhttp.NewHTTP(collectionapp.New(collectionpg.New(db)), identityTransport.RequireSession),
+		retrieval:        retrievalhttp.NewHTTP(retrievalapp.New(db, settingsRepository), identityTransport.RequireSession),
 	}, nil
 }
 func (a *App) Router() http.Handler {
@@ -100,6 +103,7 @@ func (a *App) Router() http.Handler {
 	a.identity.Register(r)
 	a.content.Register(r)
 	a.public.Register(r)
+	a.publicationAdmin.Register(r)
 	a.asset.Register(r)
 	a.knowledge.Register(r)
 	a.ai.Register(r)
