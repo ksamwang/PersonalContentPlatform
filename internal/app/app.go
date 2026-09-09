@@ -88,7 +88,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 		ai:          aihttp.NewHTTP(aiService, identityTransport.RequireSession),
 		integration: integrationhttp.NewHTTP(integrationapp.NewExportService(integrationRepository), integrationapp.NewWebhookService(integrationRepository), identityTransport.RequireSession),
 		settings:    settingshttp.NewHTTP(settingsapp.New(settingsRepository, cfg.StorageBasePath), identityTransport.RequireSession),
-		inbox:       inboxhttp.NewHTTP(inboxapp.New(inboxpg.New(db), cfg.SupportedLocales, settingsRepository), identityTransport.RequireSession),
+		inbox:       inboxhttp.NewHTTP(inboxapp.New(inboxpg.New(db), cfg.SupportedLocales, settingsRepository, assetService), identityTransport.RequireSession),
 		collection:  collectionhttp.NewHTTP(collectionapp.New(collectionpg.New(db)), identityTransport.RequireSession),
 		retrieval:   retrievalhttp.NewHTTP(retrievalapp.New(db, settingsRepository), identityTransport.RequireSession),
 	}, nil

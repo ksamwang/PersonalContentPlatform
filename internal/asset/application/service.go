@@ -134,6 +134,21 @@ func (s *Service) OpenPublic(ctx context.Context, assetID uuid.UUID) (io.ReadClo
 	reader, err := storage.Open(ctx, object.StorageKey)
 	return reader, object, err
 }
+func (s *Service) Open(ctx context.Context, workspaceID, assetID uuid.UUID) (io.ReadCloser, domain.StoredObject, error) {
+	object, err := s.repo.Object(ctx, assetID)
+	if err != nil {
+		return nil, domain.StoredObject{}, err
+	}
+	if object.WorkspaceID != workspaceID {
+		return nil, domain.StoredObject{}, fmt.Errorf("asset does not belong to workspace")
+	}
+	storage, _, err := s.storage.Resolve(ctx, workspaceID, object.StorageProfileID)
+	if err != nil {
+		return nil, domain.StoredObject{}, err
+	}
+	reader, err := storage.Open(ctx, object.StorageKey)
+	return reader, object, err
+}
 func (s *Service) OpenPublicVariant(ctx context.Context, assetID uuid.UUID, recipe string) (io.ReadCloser, domain.StoredObject, error) {
 	object, err := s.repo.VariantObject(ctx, assetID, recipe)
 	if err != nil {

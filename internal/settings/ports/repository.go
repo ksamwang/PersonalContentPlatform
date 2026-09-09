@@ -19,4 +19,6 @@ type Repository interface {
 	SaveAI(context.Context, uuid.UUID, uuid.UUID, domain.AIConfig) (domain.AIConfig, error)
 	Embedding(context.Context, uuid.UUID) (domain.EmbeddingConfig, error)
 	SaveEmbedding(context.Context, uuid.UUID, uuid.UUID, domain.EmbeddingConfig) (domain.EmbeddingConfig, error)
+	Media(context.Context, uuid.UUID, string) (domain.MediaConfig, error)
+	SaveMedia(context.Context, uuid.UUID, uuid.UUID, domain.MediaConfig) (domain.MediaConfig, error)
 }

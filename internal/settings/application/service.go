@@ -44,7 +44,27 @@ func (s *Service) Get(ctx context.Context, ws uuid.UUID, canEdit bool) (domain.S
 	if err != nil {
 		return domain.Settings{}, err
 	}
-	return domain.Settings{General: general, Storage: storage, AI: ai, Embedding: embedding, CanEdit: canEdit}, nil
+	media := make([]domain.MediaConfig, 0, 2)
+	for _, purpose := range []string{"ocr", "transcription"} {
+		value, e := s.repo.Media(ctx, ws, purpose)
+		if e != nil {
+			return domain.Settings{}, e
+		}
+		media = append(media, value)
+	}
+	return domain.Settings{General: general, Storage: storage, AI: ai, Embedding: embedding, Media: media, CanEdit: canEdit}, nil
+}
+func (s *Service) SaveMedia(ctx context.Context, ws, actor uuid.UUID, v domain.MediaConfig) (domain.MediaConfig, error) {
+	if v.Purpose != "ocr" && v.Purpose != "transcription" {
+		return v, fmt.Errorf("unsupported media purpose")
+	}
+	v.Provider = "openai-compatible"
+	v.BaseURL = strings.TrimRight(strings.TrimSpace(v.BaseURL), "/")
+	v.Model = strings.TrimSpace(v.Model)
+	if v.BaseURL == "" || v.Model == "" {
+		return v, fmt.Errorf("base URL and model are required")
+	}
+	return s.repo.SaveMedia(ctx, ws, actor, v)
 }
 func (s *Service) SaveEmbedding(ctx context.Context, ws, actor uuid.UUID, v domain.EmbeddingConfig) (domain.EmbeddingConfig, error) {
 	v.Provider = "openai-compatible"

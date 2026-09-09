@@ -219,3 +219,27 @@ func (r *Repository) SaveEmbedding(ctx context.Context, ws, actor uuid.UUID, v d
 	v.APIKeySet = v.APIKey != ""
 	return v, nil
 }
+func (r *Repository) Media(ctx context.Context, ws uuid.UUID, purpose string) (domain.MediaConfig, error) {
+	v := domain.MediaConfig{Purpose: purpose, Provider: "openai-compatible"}
+	err := r.db.QueryRow(ctx, `SELECT provider,base_url,api_key,model,updated_at FROM media_provider_configs WHERE workspace_id=$1 AND purpose=$2`, ws, purpose).Scan(&v.Provider, &v.BaseURL, &v.APIKey, &v.Model, &v.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return v, nil
+	}
+	if err == nil {
+		v.APIKeyMask = mask(v.APIKey)
+		v.APIKeySet = v.APIKey != ""
+	}
+	return v, err
+}
+func (r *Repository) SaveMedia(ctx context.Context, ws, actor uuid.UUID, v domain.MediaConfig) (domain.MediaConfig, error) {
+	old, _ := r.Media(ctx, ws, v.Purpose)
+	if v.APIKey == "" {
+		v.APIKey = old.APIKey
+	}
+	err := r.db.QueryRow(ctx, `INSERT INTO media_provider_configs(workspace_id,purpose,provider,base_url,api_key,model) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(workspace_id,purpose) DO UPDATE SET provider=EXCLUDED.provider,base_url=EXCLUDED.base_url,api_key=EXCLUDED.api_key,model=EXCLUDED.model,updated_at=now() RETURNING updated_at`, ws, v.Purpose, v.Provider, v.BaseURL, v.APIKey, v.Model).Scan(&v.UpdatedAt)
+	if err == nil {
+		v.APIKeyMask = mask(v.APIKey)
+		v.APIKeySet = v.APIKey != ""
+	}
+	return v, err
+}

@@ -32,8 +32,31 @@ func (h *HTTP) Register(r chi.Router) {
 		r.Post("/v1/workspaces/{workspaceID}/settings/storage:test", h.testStorage)
 		r.Post("/v1/workspaces/{workspaceID}/settings/ai:test", h.testAI)
 		r.Post("/v1/workspaces/{workspaceID}/settings/embedding:test", h.testEmbedding)
+		r.Put("/v1/workspaces/{workspaceID}/settings/media/{purpose}", h.saveMedia)
 		r.Post("/v1/workspaces/{workspaceID}/settings/ai:models", h.listAIModels)
 	})
+}
+func (h *HTTP) saveMedia(w http.ResponseWriter, r *http.Request) {
+	if !owner(w, r) {
+		return
+	}
+	var input struct {
+		Provider string `json:"provider"`
+		BaseURL  string `json:"base_url"`
+		APIKey   string `json:"api_key"`
+		Model    string `json:"model"`
+	}
+	if err := httpx.Decode(w, r, &input); err != nil {
+		httpx.Error(w, 400, "invalid_request", err.Error())
+		return
+	}
+	ws, user, _ := principal(r)
+	saved, err := h.service.SaveMedia(r.Context(), ws, user, domain.MediaConfig{Purpose: chi.URLParam(r, "purpose"), Provider: input.Provider, BaseURL: input.BaseURL, APIKey: input.APIKey, Model: input.Model})
+	if err != nil {
+		httpx.Error(w, 422, "media_provider_invalid", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, saved)
 }
 func (h *HTTP) saveEmbedding(w http.ResponseWriter, r *http.Request) {
 	if !owner(w, r) {

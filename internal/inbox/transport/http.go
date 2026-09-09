@@ -31,6 +31,7 @@ func (h *HTTP) Register(r chi.Router) {
 			r.Post("/", h.create)
 			r.Post("/{itemID}:archive", h.archive)
 			r.Post("/{itemID}:convert", h.convert)
+			r.Post("/{itemID}:process", h.process)
 		})
 	})
 }
@@ -89,18 +90,35 @@ func (h *HTTP) create(w http.ResponseWriter, r *http.Request) {
 		Kind      domain.Kind `json:"kind"`
 		RawText   string      `json:"raw_text"`
 		SourceURL string      `json:"source_url"`
+		AssetID   string      `json:"asset_id"`
 	}
 	if err := httpx.Decode(w, r, &input); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 	workspaceID, userID, _ := principal(r)
-	item, err := h.service.Create(r.Context(), workspaceID, userID, input.Kind, input.RawText, input.SourceURL)
+	item, err := h.service.Create(r.Context(), workspaceID, userID, input.Kind, input.RawText, input.SourceURL, input.AssetID)
 	if err != nil {
 		httpx.Error(w, http.StatusUnprocessableEntity, "inbox_invalid", err.Error())
 		return
 	}
 	httpx.JSON(w, http.StatusCreated, item)
+}
+func (h *HTTP) process(w http.ResponseWriter, r *http.Request) {
+	if !canWrite(w, r) {
+		return
+	}
+	id, ok := itemID(w, r)
+	if !ok {
+		return
+	}
+	ws, _, _ := principal(r)
+	item, err := h.service.Process(r.Context(), ws, id)
+	if err != nil {
+		httpx.Error(w, 422, "inbox_processing_failed", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, item)
 }
 
 func (h *HTTP) archive(w http.ResponseWriter, r *http.Request) {

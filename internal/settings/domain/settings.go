@@ -81,11 +81,22 @@ type EmbeddingConfig struct {
 	Dimensions int       `json:"dimensions"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
+type MediaConfig struct {
+	Purpose    string    `json:"purpose"`
+	Provider   string    `json:"provider"`
+	BaseURL    string    `json:"base_url"`
+	APIKey     string    `json:"-"`
+	APIKeyMask string    `json:"api_key_mask"`
+	APIKeySet  bool      `json:"api_key_set"`
+	Model      string    `json:"model"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
 
 type Settings struct {
 	General   GeneralSettings `json:"general"`
 	Storage   *StorageProfile `json:"storage"`
 	AI        AIConfig        `json:"ai"`
 	Embedding EmbeddingConfig `json:"embedding"`
+	Media     []MediaConfig   `json:"media"`
 	CanEdit   bool            `json:"can_edit"`
 }
