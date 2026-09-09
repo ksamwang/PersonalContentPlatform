@@ -836,6 +836,8 @@ select:focus-visible,
 .localization-tabs button[aria-selected="true"] { border-bottom-color: var(--accent); font-weight: 700; }
 .localization-tabs button small { color: var(--muted); font-weight: 400; }
 .localization-tabs .add-localization { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.localization-tabs .translate-action { display: flex; align-items: center; gap: 6px; margin-left: auto; color: var(--accent); font-weight: 700; }
+.localization-tabs .translate-action:disabled { opacity: 0.55; cursor: wait; }
 .localization-tabs svg { width: 17px; }
 .localization-create {
   display: flex;

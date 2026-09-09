@@ -40,7 +40,8 @@ export function EditorPanel({
     [slashOpen,setSlashOpen]=useState(false),
     [characterCount,setCharacterCount]=useState(0),
     [propertiesOpen,setPropertiesOpen]=useState(false),
-    [readiness,setReadiness]=useState<Readiness|null>(null);
+    [readiness,setReadiness]=useState<Readiness|null>(null),
+    [translationBusy,setTranslationBusy]=useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef<Draft | null>(null);
   const titleRef = useRef("");
@@ -170,6 +171,13 @@ export function EditorPanel({
   function updateMetadata(metadata:Record<string,unknown>){if(!draftRef.current)return;const next={...draftRef.current,metadata};setDraft(next);draftRef.current=next;scheduleSave()}
   async function openProperties(){setPropertiesOpen(true);try{setReadiness(await api.readiness(workspace,localization.id))}catch{setReadiness(null)}}
   async function switchLocalization(id:string){if(id===localization.id)return;if(timer.current)clearTimeout(timer.current);await save();setActiveLocalizationID(id);setHistoryOpen(false);setPropertiesOpen(false);setReadiness(null)}
+  async function translate(){
+    const source=content.localizations.find(item=>item.locale===content.default_locale);
+    if(!source){setStatus("找不到原始语言版本");return}
+    setTranslationBusy(true);setStatus("AI 正在翻译完整内容…");
+    try{if(timer.current)clearTimeout(timer.current);await save();const next=await api.translateLocalization(workspace,localization.id,source.id);applyRestoredDraft(next);const refreshed=await api.content(workspace,content.id);onContentChanged(refreshed);setStatus("AI 译稿已生成，请校对后发布")}
+    catch(error){setStatus(error instanceof Error?`翻译失败：${error.message}`:"翻译失败，请重试")}finally{setTranslationBusy(false)}
+  }
   async function waitUntilPublished() {
     for (let attempt = 0; attempt < 20; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -195,7 +203,7 @@ export function EditorPanel({
     return <section className="editor-panel skeleton" aria-busy="true" />;
   return (
     <section className={`editor-panel${focusMode?" focus-mode":""}`}>
-      <LocalizationTabs workspace={workspace} content={content} active={localization.id} canEdit={canEdit} onSelect={id=>void switchLocalization(id)} onCreated={(next,targetID)=>{onContentChanged(next);setActiveLocalizationID(targetID)}}/>
+      <LocalizationTabs workspace={workspace} content={content} active={localization.id} canEdit={canEdit} translating={translationBusy} onSelect={id=>void switchLocalization(id)} onCreated={(next,targetID)=>{onContentChanged(next);setActiveLocalizationID(targetID)}} onTranslate={()=>void translate()}/>
       <header className="editor-header">
         <div>
           <span className="eyebrow">

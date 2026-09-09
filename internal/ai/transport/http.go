@@ -22,8 +22,38 @@ func (h *HTTP) Register(r chi.Router) {
 		r.Use(h.auth)
 		r.Post("/v1/workspaces/{workspaceID}/ai/suggestions", h.suggest)
 		r.Post("/v1/workspaces/{workspaceID}/ai/suggestions/{suggestionID}:review", h.review)
+		r.Post("/v1/workspaces/{workspaceID}/localizations/{localizationID}:translate", h.translate)
 	})
 }
+
+type translateInput struct {
+	SourceLocalizationID uuid.UUID `json:"source_localization_id"`
+}
+
+func (h *HTTP) translate(w http.ResponseWriter, r *http.Request) {
+	ws, user, ok := principal(r)
+	if !ok {
+		httpx.Error(w, 403, "workspace_forbidden", "workspace access denied")
+		return
+	}
+	targetID, err := uuid.Parse(chi.URLParam(r, "localizationID"))
+	if err != nil {
+		httpx.Error(w, 400, "invalid_localization", "invalid localization id")
+		return
+	}
+	var input translateInput
+	if err = httpx.Decode(w, r, &input); err != nil || input.SourceLocalizationID == uuid.Nil {
+		httpx.Error(w, 400, "invalid_request", "source_localization_id is required")
+		return
+	}
+	draft, err := h.service.Translate(r.Context(), ws, user, input.SourceLocalizationID, targetID)
+	if err != nil {
+		httpx.Error(w, 422, "translation_failed", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, draft)
+}
+
 func principal(r *http.Request) (uuid.UUID, uuid.UUID, bool) {
 	p, ok := identity.Principal(r.Context())
 	ws, err := uuid.Parse(chi.URLParam(r, "workspaceID"))

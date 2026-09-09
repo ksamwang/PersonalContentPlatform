@@ -28,6 +28,7 @@ export type Readiness = { ready:boolean; issues:ReadinessIssue[] };
 export type Content = {
   id: string;
   type: "article" | "note" | "page";
+  default_locale: string;
   visibility: string;
   updated_at: string;
   localizations: Localization[];
@@ -131,6 +132,8 @@ export const api = {
     }),
   createLocalization: (ws:string,contentID:string,value:{locale:string;slug:string;source_locale:string}) =>
     request<Content>(`/v1/workspaces/${ws}/contents/${contentID}/localizations`,{method:"POST",body:JSON.stringify(value)}),
+  translateLocalization: (ws:string,targetID:string,sourceID:string) =>
+    request<Draft>(`/v1/workspaces/${ws}/localizations/${targetID}:translate`,{method:"POST",body:JSON.stringify({source_localization_id:sourceID})}),
   draft: (ws: string, id: string) =>
     request<Draft>(`/v1/workspaces/${ws}/localizations/${id}/draft`),
   saveDraft: (ws: string, id: string, input: SaveDraftInput) =>
