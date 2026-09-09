@@ -102,6 +102,21 @@ func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, limit int) ([
 	}
 	return s.repo.List(ctx, workspaceID, limit)
 }
+func (s *Service) Get(ctx context.Context, workspaceID, assetID uuid.UUID) (domain.Asset, error) {
+	return s.repo.Get(ctx, workspaceID, assetID)
+}
+func (s *Service) Usages(ctx context.Context, workspaceID, assetID uuid.UUID) ([]domain.Usage, error) {
+	return s.repo.Usages(ctx, workspaceID, assetID)
+}
+func (s *Service) Archive(ctx context.Context, workspaceID, assetID uuid.UUID) error {
+	return s.repo.Archive(ctx, workspaceID, assetID)
+}
+func (s *Service) Replace(ctx context.Context, workspaceID, assetID, replacementID uuid.UUID) (domain.Asset, error) {
+	if assetID == replacementID {
+		return domain.Asset{}, fmt.Errorf("replacement asset must be different")
+	}
+	return s.repo.Replace(ctx, workspaceID, assetID, replacementID)
+}
 func (s *Service) OpenPublic(ctx context.Context, assetID uuid.UUID) (io.ReadCloser, domain.StoredObject, error) {
 	object, err := s.repo.Object(ctx, assetID)
 	if err != nil {

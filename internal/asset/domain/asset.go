@@ -24,6 +24,14 @@ type Asset struct {
 	Size             int64      `json:"size"`
 	SHA256           string     `json:"sha256"`
 	CreatedAt        time.Time  `json:"created_at"`
+	UsageCount       int        `json:"usage_count"`
+	ArchivedAt       *time.Time `json:"archived_at,omitempty"`
+}
+type Usage struct {
+	ID         uuid.UUID `json:"id"`
+	OwnerID    uuid.UUID `json:"owner_id"`
+	OwnerTitle string    `json:"owner_title"`
+	Role       string    `json:"role"`
 }
 type StoredObject struct {
 	WorkspaceID      uuid.UUID

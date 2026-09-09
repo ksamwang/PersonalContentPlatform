@@ -53,7 +53,9 @@ export type Asset = {
   mime: string;
   size: number;
   sha256: string;
+  usage_count: number;
 };
+export type AssetUsage={id:string;owner_id:string;owner_title:string;role:string};
 export type GeneralSettings = {
   workspace: { name: string; slug: string; default_locale: string; supported_locales: string[]; timezone: string };
   site: { name: string; public_url: string; description: string; about: string; footer: string; rss_enabled: boolean };
@@ -169,6 +171,10 @@ export const api = {
     }),
   assets: (ws: string) =>
     requestItems<Asset>(`/v1/workspaces/${ws}/assets/`),
+  asset:(ws:string,id:string)=>request<Asset>(`/v1/workspaces/${ws}/assets/${id}`),
+  assetUsages:(ws:string,id:string)=>requestItems<AssetUsage>(`/v1/workspaces/${ws}/assets/${id}/usages`),
+  archiveAsset:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/assets/${id}:archive`,{method:"POST"}),
+  replaceAsset:(ws:string,id:string,replacementID:string)=>request<Asset>(`/v1/workspaces/${ws}/assets/${id}:replace`,{method:"POST",body:JSON.stringify({replacement_asset_id:replacementID})}),
   uploadAsset: async (ws: string, file: File) => {
     const plan = await request<{
       upload_id: string;

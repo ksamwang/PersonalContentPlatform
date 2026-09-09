@@ -5,9 +5,11 @@ import { api, Asset } from "../../lib/api";
 export function AssetUpload({
   workspace,
   onUploaded,
+  label="上传图片",
 }: {
   workspace: string;
   onUploaded?: (a: Asset) => void;
+  label?: string;
 }) {
   const [status, setStatus] = useState("");
   async function change(event: ChangeEvent<HTMLInputElement>) {
@@ -27,7 +29,7 @@ export function AssetUpload({
   return (
     <label className="secondary asset-upload">
       <ImagePlus aria-hidden size={17} />
-      <span>{status || "上传图片"}</span>
+      <span>{status || label}</span>
       <input
         className="sr-only"
         type="file"

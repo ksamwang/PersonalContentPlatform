@@ -2,12 +2,13 @@ import {
   BookOpen,
   Inbox,
   Library,
+  Images,
   Search,
   Settings2,
   Shapes,
 } from "lucide-react";
 
-export type StudioView = "content"|"inbox"|"collections"|"discover"|"settings";
+export type StudioView = "content"|"inbox"|"collections"|"assets"|"discover"|"settings";
 export function Sidebar({ onNavigate, view, publicSite }: { onNavigate: (view:StudioView) => void; view: StudioView; publicSite:string }) {
   return (
     <aside className="sidebar">
@@ -31,6 +32,7 @@ export function Sidebar({ onNavigate, view, publicSite }: { onNavigate: (view:St
           <Shapes aria-hidden size={19} />
           <span>合集</span>
         </button>
+        <button className={view === "assets" ? "active" : ""} onClick={()=>onNavigate("assets")}><Images aria-hidden size={19}/><span>资产</span></button>
         <button className={view === "discover" ? "active" : ""} onClick={()=>onNavigate("discover")}>
           <Search aria-hidden size={19} />
           <span>发现</span>

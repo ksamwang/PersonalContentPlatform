@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { api, Content, Principal } from "../../lib/api";
 import { AuthPanel } from "../auth/AuthPanel";
 import { AddPasskey } from "../auth/PasskeyButton";
-import { AssetUpload } from "../assets/AssetUpload";
+import { AssetsPanel } from "../assets/AssetsPanel";
 import { EditorPanel } from "../editor/EditorPanel";
 import { ContentList } from "./ContentList";
 import { CreateContent } from "./CreateContent";
@@ -76,6 +76,8 @@ export function StudioApp() {
           <InboxPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{const content=await api.content(user.WorkspaceID,id);setSelected(content);setView("content");void load(user,"")}catch(err){setLoadError(err instanceof Error?err.message:"内容加载失败");setView("content")}}}/>
         ) : view === "collections" ? (
           <CollectionsPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{const content=await api.content(user.WorkspaceID,id);setSelected(content);setView("content")}catch(err){setLoadError(err instanceof Error?err.message:"内容加载失败");setView("content")}}}/>
+        ) : view === "assets" ? (
+          <AssetsPanel workspace={user.WorkspaceID} canEdit={user.Role==="owner"||user.Role==="editor"} onOpenContent={async id=>{try{setSelected(await api.content(user.WorkspaceID,id));setView("content")}catch(error){setLoadError(error instanceof Error?error.message:"内容加载失败")}}}/>
         ) : view === "discover" ? (
           <DiscoverPanel workspace={user.WorkspaceID} onOpen={content=>{setSelected(content);setView("content")}}/>
         ) : (<>
@@ -96,7 +98,6 @@ export function StudioApp() {
               />
             </label>
             <AddPasskey />
-            <AssetUpload workspace={user.WorkspaceID} />
             <CreateContent
               workspace={user.WorkspaceID}
               onCreated={(c) => {

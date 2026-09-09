@@ -26,11 +26,84 @@ func (h *HTTP) Register(r chi.Router) {
 		r.Route("/v1/workspaces/{workspaceID}/assets", func(r chi.Router) {
 			r.Use(scope)
 			r.Get("/", h.list)
+			r.Get("/{assetID}", h.get)
+			r.Get("/{assetID}/usages", h.usages)
+			r.Post("/{assetID}:archive", h.archive)
+			r.Post("/{assetID}:replace", h.replace)
 			r.Put("/uploads/{uploadID}", h.upload)
 		})
 		r.With(scope).Post("/v1/workspaces/{workspaceID}/assets:prepare-upload", h.prepare)
 		r.With(scope).Post("/v1/workspaces/{workspaceID}/assets:finalize-upload", h.finalize)
 	})
+}
+func assetID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+	value, err := uuid.Parse(chi.URLParam(r, "assetID"))
+	if err != nil {
+		httpx.Error(w, 400, "invalid_asset", "invalid asset id")
+		return uuid.Nil, false
+	}
+	return value, true
+}
+func (h *HTTP) get(w http.ResponseWriter, r *http.Request) {
+	id, ok := assetID(w, r)
+	if !ok {
+		return
+	}
+	ws, _ := ids(r)
+	item, err := h.service.Get(r.Context(), ws, id)
+	if err != nil {
+		httpx.Error(w, 404, "asset_not_found", "asset was not found")
+		return
+	}
+	httpx.JSON(w, 200, item)
+}
+func (h *HTTP) usages(w http.ResponseWriter, r *http.Request) {
+	id, ok := assetID(w, r)
+	if !ok {
+		return
+	}
+	ws, _ := ids(r)
+	items, err := h.service.Usages(r.Context(), ws, id)
+	if err != nil {
+		httpx.Error(w, 500, "asset_usages_failed", "could not load asset usages")
+		return
+	}
+	httpx.JSON(w, 200, map[string]any{"items": items})
+}
+func (h *HTTP) archive(w http.ResponseWriter, r *http.Request) {
+	id, ok := assetID(w, r)
+	if !ok {
+		return
+	}
+	ws, _ := ids(r)
+	if err := h.service.Archive(r.Context(), ws, id); err != nil {
+		httpx.Error(w, 409, "asset_in_use", err.Error())
+		return
+	}
+	w.WriteHeader(204)
+}
+
+type replaceInput struct {
+	ReplacementAssetID uuid.UUID `json:"replacement_asset_id"`
+}
+
+func (h *HTTP) replace(w http.ResponseWriter, r *http.Request) {
+	id, ok := assetID(w, r)
+	if !ok {
+		return
+	}
+	var in replaceInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, 400, "invalid_request", err.Error())
+		return
+	}
+	ws, _ := ids(r)
+	item, err := h.service.Replace(r.Context(), ws, id, in.ReplacementAssetID)
+	if err != nil {
+		httpx.Error(w, 422, "asset_replace_failed", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, item)
 }
 func (h *HTTP) publicContent(w http.ResponseWriter, r *http.Request) {
 	assetID, err := uuid.Parse(chi.URLParam(r, "assetID"))
