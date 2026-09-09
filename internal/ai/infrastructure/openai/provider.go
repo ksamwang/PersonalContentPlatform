@@ -64,6 +64,50 @@ func (p *Provider) Generate(ctx context.Context, in ports.Request) (ports.Respon
 	}
 	return ports.Response{Text: out.Choices[0].Message.Content, InputTokens: out.Usage.Prompt, OutputTokens: out.Usage.Completion}, nil
 }
+func (p *Provider) Embed(ctx context.Context, inputs []string, model string) ([][]float32, int, error) {
+	if p.baseURL == "" || p.key == "" || model == "" {
+		return nil, 0, fmt.Errorf("embedding provider is not configured")
+	}
+	body, _ := json.Marshal(map[string]any{"model": model, "input": inputs})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/embeddings", bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+p.key)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := p.client.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode/100 != 2 {
+		return nil, 0, fmt.Errorf("embedding provider returned status %d", res.StatusCode)
+	}
+	var out struct {
+		Data []struct {
+			Embedding []float32 `json:"embedding"`
+			Index     int       `json:"index"`
+		} `json:"data"`
+		Usage struct {
+			Total int `json:"total_tokens"`
+		} `json:"usage"`
+	}
+	if err = json.NewDecoder(res.Body).Decode(&out); err != nil {
+		return nil, 0, err
+	}
+	vectors := make([][]float32, len(inputs))
+	for _, item := range out.Data {
+		if item.Index >= 0 && item.Index < len(vectors) {
+			vectors[item.Index] = item.Embedding
+		}
+	}
+	for _, v := range vectors {
+		if len(v) == 0 {
+			return nil, 0, fmt.Errorf("embedding provider returned incomplete vectors")
+		}
+	}
+	return vectors, out.Usage.Total, nil
+}
 
 type Resolver struct {
 	repository settingsports.Repository

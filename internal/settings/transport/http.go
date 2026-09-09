@@ -28,10 +28,46 @@ func (h *HTTP) Register(r chi.Router) {
 		r.Put("/v1/workspaces/{workspaceID}/settings/{section}", h.updateSection)
 		r.Put("/v1/workspaces/{workspaceID}/settings/storage", h.saveStorage)
 		r.Put("/v1/workspaces/{workspaceID}/settings/ai", h.saveAI)
+		r.Put("/v1/workspaces/{workspaceID}/settings/embedding", h.saveEmbedding)
 		r.Post("/v1/workspaces/{workspaceID}/settings/storage:test", h.testStorage)
 		r.Post("/v1/workspaces/{workspaceID}/settings/ai:test", h.testAI)
+		r.Post("/v1/workspaces/{workspaceID}/settings/embedding:test", h.testEmbedding)
 		r.Post("/v1/workspaces/{workspaceID}/settings/ai:models", h.listAIModels)
 	})
+}
+func (h *HTTP) saveEmbedding(w http.ResponseWriter, r *http.Request) {
+	if !owner(w, r) {
+		return
+	}
+	var input struct {
+		Provider   string `json:"provider"`
+		BaseURL    string `json:"base_url"`
+		APIKey     string `json:"api_key"`
+		Model      string `json:"model"`
+		Dimensions int    `json:"dimensions"`
+	}
+	if err := httpx.Decode(w, r, &input); err != nil {
+		httpx.Error(w, 400, "invalid_request", err.Error())
+		return
+	}
+	ws, user, _ := principal(r)
+	saved, err := h.service.SaveEmbedding(r.Context(), ws, user, domain.EmbeddingConfig{Provider: input.Provider, BaseURL: input.BaseURL, APIKey: input.APIKey, Model: input.Model, Dimensions: input.Dimensions})
+	if err != nil {
+		httpx.Error(w, 422, "embedding_invalid", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, saved)
+}
+func (h *HTTP) testEmbedding(w http.ResponseWriter, r *http.Request) {
+	if !owner(w, r) {
+		return
+	}
+	ws, _, _ := principal(r)
+	if err := h.service.TestEmbedding(r.Context(), ws); err != nil {
+		httpx.Error(w, 422, "embedding_connection_failed", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, map[string]bool{"ok": true})
 }
 
 func (h *HTTP) listAIModels(w http.ResponseWriter, r *http.Request) {

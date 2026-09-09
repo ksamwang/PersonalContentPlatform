@@ -11,3 +11,6 @@ type Provider interface {
 	Generate(context.Context, Request) (Response, error)
 	Name() string
 }
+type Embedder interface {
+	Embed(context.Context, []string, string) ([][]float32, int, error)
+}

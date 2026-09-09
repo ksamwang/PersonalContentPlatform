@@ -67,8 +67,9 @@ export type GeneralSettings = {
 };
 export type StorageSettings = { id?: string; name: string; provider: "filesystem"|"s3"|"r2"|"oss"; endpoint: string; region: string; bucket: string; access_key_mask?: string; secret_key_set?: boolean; base_path: string; active?: boolean };
 export type AISettings = { provider: string; base_url: string; api_key_mask?: string; api_key_set?: boolean; model: string; purpose_models: Record<string,string> };
+export type EmbeddingSettings={provider:string;base_url:string;api_key_mask?:string;api_key_set?:boolean;model:string;dimensions:number};
 export type SaveAISettings = Pick<AISettings,"provider"|"base_url"|"model"|"purpose_models"> & {api_key?:string};
-export type WorkspaceSettings = { general: GeneralSettings; storage: StorageSettings|null; ai: AISettings; can_edit: boolean };
+export type WorkspaceSettings = { general: GeneralSettings; storage: StorageSettings|null; ai: AISettings; embedding:EmbeddingSettings; can_edit: boolean };
 export type WebhookEndpoint = {id:string;name:string;url:string;secret_set:boolean;enabled:boolean;event_types:string[]};
 export type InboxItem = { id:string; kind:"text"|"link"; raw_text:string; source_url?:string; state:"pending"|"converted"|"archived"; converted_content_id?:string; created_at:string; updated_at:string };
 export type InboxConversion = { inbox_id:string; content_id:string; localization_id:string };
@@ -219,6 +220,8 @@ export const api = {
   saveAI: (ws: string, value: SaveAISettings) => request<AISettings>(`/v1/workspaces/${ws}/settings/ai`, { method: "PUT", body: JSON.stringify(value) }),
   aiModels: (ws:string,value:{provider:string;base_url:string;api_key?:string}) => requestItems<{id:string}>(`/v1/workspaces/${ws}/settings/ai:models`,{method:"POST",body:JSON.stringify(value)}),
   testAI: (ws: string) => request<{ok:boolean}>(`/v1/workspaces/${ws}/settings/ai:test`, { method: "POST" }),
+  saveEmbedding:(ws:string,value:EmbeddingSettings&{api_key?:string})=>request<EmbeddingSettings>(`/v1/workspaces/${ws}/settings/embedding`,{method:"PUT",body:JSON.stringify(value)}),
+  testEmbedding:(ws:string)=>request<{ok:boolean}>(`/v1/workspaces/${ws}/settings/embedding:test`,{method:"POST"}),
   webhooks: (ws:string)=>requestItems<WebhookEndpoint>(`/v1/workspaces/${ws}/webhooks`),
   createWebhook:(ws:string,value:{name:string;url:string;secret:string;event_types:string[]})=>request<WebhookEndpoint>(`/v1/workspaces/${ws}/webhooks`,{method:"POST",body:JSON.stringify(value)}),
   setWebhookEnabled:(ws:string,id:string,enabled:boolean)=>request<void>(`/v1/workspaces/${ws}/webhooks/${id}`,{method:"PATCH",body:JSON.stringify({enabled})}),
@@ -257,4 +260,8 @@ export const api = {
   aiSuggestions:(ws:string,state="")=>requestItems<AISuggestion>(`/v1/workspaces/${ws}/ai/suggestions${state?`?state=${state}`:""}`),
   reviewAISuggestion:(ws:string,id:string,state:"accepted"|"rejected")=>request<void>(`/v1/workspaces/${ws}/ai/suggestions/${id}:review`,{method:"POST",body:JSON.stringify({state})}),
   aiRuns:(ws:string)=>requestItems<AIRun>(`/v1/workspaces/${ws}/ai/runs`),
+  rebuildSearchIndex:(ws:string)=>request<{chunks:number}>(`/v1/workspaces/${ws}/search:index`,{method:"POST"}),
+  hybridSearch:(ws:string,q:string,locale="")=>requestItems<SearchHit>(`/v1/workspaces/${ws}/hybrid-search?q=${encodeURIComponent(q)}${locale?`&locale=${encodeURIComponent(locale)}`:""}`),
+  rag:(ws:string,query:string,locale="")=>request<{answer:string;sources:SearchHit[]}>(`/v1/workspaces/${ws}/rag`,{method:"POST",body:JSON.stringify({query,locale})}),
 };
+export type SearchHit={content_id:string;title:string;summary:string;locale:string;type:string;slug:string;excerpt:string;score:number};

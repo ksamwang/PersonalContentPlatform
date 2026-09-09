@@ -17,4 +17,6 @@ type Repository interface {
 	SaveStorage(context.Context, uuid.UUID, uuid.UUID, domain.StorageProfile) (domain.StorageProfile, error)
 	AI(context.Context, uuid.UUID) (domain.AIConfig, error)
 	SaveAI(context.Context, uuid.UUID, uuid.UUID, domain.AIConfig) (domain.AIConfig, error)
+	Embedding(context.Context, uuid.UUID) (domain.EmbeddingConfig, error)
+	SaveEmbedding(context.Context, uuid.UUID, uuid.UUID, domain.EmbeddingConfig) (domain.EmbeddingConfig, error)
 }

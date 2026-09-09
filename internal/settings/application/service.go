@@ -40,7 +40,34 @@ func (s *Service) Get(ctx context.Context, ws uuid.UUID, canEdit bool) (domain.S
 	if err != nil {
 		return domain.Settings{}, err
 	}
-	return domain.Settings{General: general, Storage: storage, AI: ai, CanEdit: canEdit}, nil
+	embedding, err := s.repo.Embedding(ctx, ws)
+	if err != nil {
+		return domain.Settings{}, err
+	}
+	return domain.Settings{General: general, Storage: storage, AI: ai, Embedding: embedding, CanEdit: canEdit}, nil
+}
+func (s *Service) SaveEmbedding(ctx context.Context, ws, actor uuid.UUID, v domain.EmbeddingConfig) (domain.EmbeddingConfig, error) {
+	v.Provider = "openai-compatible"
+	v.BaseURL = strings.TrimRight(strings.TrimSpace(v.BaseURL), "/")
+	v.Model = strings.TrimSpace(v.Model)
+	if v.BaseURL == "" || v.Model == "" {
+		return v, fmt.Errorf("embedding base URL and model are required")
+	}
+	return s.repo.SaveEmbedding(ctx, ws, actor, v)
+}
+func (s *Service) TestEmbedding(ctx context.Context, ws uuid.UUID) error {
+	v, err := s.repo.Embedding(ctx, ws)
+	if err != nil {
+		return err
+	}
+	vectors, _, err := openai.New(v.BaseURL, v.APIKey, v.Model).Embed(ctx, []string{"connection test"}, v.Model)
+	if err != nil {
+		return err
+	}
+	if len(vectors) == 0 || len(vectors[0]) == 0 {
+		return fmt.Errorf("embedding provider returned no vector")
+	}
+	return nil
 }
 func (s *Service) Public(ctx context.Context, slug string) (domain.GeneralSettings, error) {
 	return s.repo.GetBySlug(ctx, slug)

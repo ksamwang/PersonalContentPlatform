@@ -91,7 +91,7 @@ export function StudioApp() {
         ) : view === "ai" ? (
           <AIAssistantPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{setSelected(await api.content(user.WorkspaceID,id));setView("content")}catch(error){setLoadError(error instanceof Error?error.message:"内容加载失败")}}}/>
         ) : view === "discover" ? (
-          <DiscoverPanel workspace={user.WorkspaceID} onOpen={content=>{setSelected(content);setView("content")}}/>
+          <DiscoverPanel workspace={user.WorkspaceID} role={user.Role} onOpen={content=>{setSelected(content);setView("content")}}/>
         ) : (<>
         <header className="topbar">
           <div>

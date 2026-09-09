@@ -33,6 +33,8 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/health"
 	publicationhttp "github.com/ksamwang/PersonalContentPlatform/internal/publication/transport"
+	retrievalapp "github.com/ksamwang/PersonalContentPlatform/internal/retrieval/application"
+	retrievalhttp "github.com/ksamwang/PersonalContentPlatform/internal/retrieval/transport"
 	settingsapp "github.com/ksamwang/PersonalContentPlatform/internal/settings/application"
 	settingspg "github.com/ksamwang/PersonalContentPlatform/internal/settings/infrastructure/postgres"
 	settingshttp "github.com/ksamwang/PersonalContentPlatform/internal/settings/transport"
@@ -53,6 +55,7 @@ type App struct {
 	settings    *settingshttp.HTTP
 	inbox       *inboxhttp.HTTP
 	collection  *collectionhttp.HTTP
+	retrieval   *retrievalhttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -87,6 +90,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 		settings:    settingshttp.NewHTTP(settingsapp.New(settingsRepository, cfg.StorageBasePath), identityTransport.RequireSession),
 		inbox:       inboxhttp.NewHTTP(inboxapp.New(inboxpg.New(db), cfg.SupportedLocales, settingsRepository), identityTransport.RequireSession),
 		collection:  collectionhttp.NewHTTP(collectionapp.New(collectionpg.New(db)), identityTransport.RequireSession),
+		retrieval:   retrievalhttp.NewHTTP(retrievalapp.New(db, settingsRepository), identityTransport.RequireSession),
 	}, nil
 }
 func (a *App) Router() http.Handler {
@@ -103,5 +107,6 @@ func (a *App) Router() http.Handler {
 	a.settings.Register(r)
 	a.inbox.Register(r)
 	a.collection.Register(r)
+	a.retrieval.Register(r)
 	return r
 }

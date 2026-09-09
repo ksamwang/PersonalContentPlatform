@@ -193,3 +193,29 @@ func (r *Repository) SaveAI(ctx context.Context, ws, actor uuid.UUID, v domain.A
 	v.APIKeySet = v.APIKey != ""
 	return v, nil
 }
+func (r *Repository) Embedding(ctx context.Context, ws uuid.UUID) (domain.EmbeddingConfig, error) {
+	var v domain.EmbeddingConfig
+	err := r.db.QueryRow(ctx, `SELECT provider,base_url,api_key,model,dimensions,updated_at FROM embedding_provider_configs WHERE workspace_id=$1`, ws).Scan(&v.Provider, &v.BaseURL, &v.APIKey, &v.Model, &v.Dimensions, &v.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		v.Provider = "openai-compatible"
+		return v, nil
+	}
+	if err == nil {
+		v.APIKeyMask = mask(v.APIKey)
+		v.APIKeySet = v.APIKey != ""
+	}
+	return v, err
+}
+func (r *Repository) SaveEmbedding(ctx context.Context, ws, actor uuid.UUID, v domain.EmbeddingConfig) (domain.EmbeddingConfig, error) {
+	old, _ := r.Embedding(ctx, ws)
+	if v.APIKey == "" {
+		v.APIKey = old.APIKey
+	}
+	err := r.db.QueryRow(ctx, `INSERT INTO embedding_provider_configs(workspace_id,provider,base_url,api_key,model,dimensions) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(workspace_id) DO UPDATE SET provider=EXCLUDED.provider,base_url=EXCLUDED.base_url,api_key=EXCLUDED.api_key,model=EXCLUDED.model,dimensions=EXCLUDED.dimensions,updated_at=now() RETURNING updated_at`, ws, v.Provider, v.BaseURL, v.APIKey, v.Model, v.Dimensions).Scan(&v.UpdatedAt)
+	if err != nil {
+		return v, err
+	}
+	v.APIKeyMask = mask(v.APIKey)
+	v.APIKeySet = v.APIKey != ""
+	return v, nil
+}
