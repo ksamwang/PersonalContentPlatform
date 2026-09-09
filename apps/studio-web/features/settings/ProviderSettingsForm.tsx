@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { api, AISettings, StorageSettings } from "../../lib/api";
+import { AIProviderSettings } from "./AIProviderSettings";
 import { Field, SettingsSection } from "./SettingsSection";
 
 export function ProviderSettingsForm({workspace,storage,setStorage,ai,setAI,canEdit}:{workspace:string;storage:StorageSettings;setStorage:(v:StorageSettings)=>void;ai:AISettings;setAI:(v:AISettings)=>void;canEdit:boolean}){
- const [accessKey,setAccessKey]=useState(""),[secretKey,setSecretKey]=useState(""),[apiKey,setAPIKey]=useState(""),[storageProbe,setStorageProbe]=useState(""),[aiProbe,setAIProbe]=useState("");
+ const [accessKey,setAccessKey]=useState(""),[secretKey,setSecretKey]=useState(""),[storageProbe,setStorageProbe]=useState("");
  const setS=(key:keyof StorageSettings,value:unknown)=>setStorage({...storage,[key]:value});
  return <>
   <SettingsSection title="对象存储" description="新上传使用当前配置；旧文件继续绑定原有 Provider。" canEdit={canEdit} onSave={async()=>{const saved=await api.saveStorage(workspace,{...storage,access_key:accessKey,secret_key:secretKey});setStorage(saved);setAccessKey("");setSecretKey("")}}>
@@ -14,9 +15,6 @@ export function ProviderSettingsForm({workspace,storage,setStorage,ai,setAI,canE
    </>}
    {canEdit&&<button className="secondary settings-test" onClick={async()=>{setStorageProbe("测试中…");try{await api.testStorage(workspace);setStorageProbe("连接成功")}catch(e){setStorageProbe(e instanceof Error?e.message:"连接失败")}}}>测试连接</button>}<span aria-live="polite">{storageProbe}</span>
   </SettingsSection>
-  <SettingsSection title="AI Provider" description="支持 OpenAI 兼容接口，可为不同用途指定模型。" canEdit={canEdit} onSave={async()=>{const saved=await api.saveAI(workspace,{...ai,api_key:apiKey});setAI(saved);setAPIKey("")}}>
-   <Field label="接口类型"><select disabled={!canEdit} value={ai.provider} onChange={e=>setAI({...ai,provider:e.target.value})}><option value="openai-compatible">OpenAI Compatible</option></select></Field><Field label="Base URL"><input disabled={!canEdit} type="url" value={ai.base_url} onChange={e=>setAI({...ai,base_url:e.target.value})}/></Field><Field label="默认模型"><input disabled={!canEdit} value={ai.model} onChange={e=>setAI({...ai,model:e.target.value})}/></Field><Field label="API Key" hint={ai.api_key_set?`当前：${ai.api_key_mask}；留空保持不变`:undefined}><input disabled={!canEdit} type="password" autoComplete="new-password" value={apiKey} onChange={e=>setAPIKey(e.target.value)}/></Field>
-   {canEdit&&<button className="secondary settings-test" onClick={async()=>{setAIProbe("测试中…");try{await api.testAI(workspace);setAIProbe("连接成功")}catch(e){setAIProbe(e instanceof Error?e.message:"连接失败")}}}>测试连接</button>}<span aria-live="polite">{aiProbe}</span>
-  </SettingsSection>
+  <AIProviderSettings workspace={workspace} ai={ai} setAI={setAI} canEdit={canEdit}/>
  </>
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/ksamwang/PersonalContentPlatform/internal/ai/infrastructure/anthropic"
 	openai "github.com/ksamwang/PersonalContentPlatform/internal/ai/infrastructure/openai"
 	aiports "github.com/ksamwang/PersonalContentPlatform/internal/ai/ports"
 	"github.com/ksamwang/PersonalContentPlatform/internal/asset/infrastructure/storagefactory"
@@ -138,7 +139,7 @@ func (s *Service) SaveAI(ctx context.Context, ws, actor uuid.UUID, v domain.AICo
 	if v.Provider == "" {
 		v.Provider = "openai-compatible"
 	}
-	if v.Provider != "openai-compatible" {
+	if v.Provider != "openai-compatible" && v.Provider != "anthropic-compatible" {
 		return v, fmt.Errorf("unsupported AI provider")
 	}
 	if v.BaseURL != "" {
@@ -179,6 +180,10 @@ func (s *Service) TestAI(ctx context.Context, ws uuid.UUID) error {
 	if config.BaseURL == "" || config.APIKey == "" || config.Model == "" {
 		return fmt.Errorf("AI provider configuration is incomplete")
 	}
-	_, err = openai.New(config.BaseURL, config.APIKey, config.Model).Generate(ctx, aiports.Request{System: "Reply with OK only.", User: "Connection test", Model: config.Model})
+	provider := aiports.Provider(openai.New(config.BaseURL, config.APIKey, config.Model))
+	if config.Provider == "anthropic-compatible" {
+		provider = anthropic.New(config.BaseURL, config.APIKey, config.Model)
+	}
+	_, err = provider.Generate(ctx, aiports.Request{System: "Reply with OK only.", User: "Connection test", Model: config.Model})
 	return err
 }

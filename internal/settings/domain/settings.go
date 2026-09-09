@@ -68,6 +68,10 @@ type AIConfig struct {
 	UpdatedAt     time.Time         `json:"updated_at"`
 }
 
+type AIModel struct {
+	ID string `json:"id"`
+}
+
 type Settings struct {
 	General GeneralSettings `json:"general"`
 	Storage *StorageProfile `json:"storage"`

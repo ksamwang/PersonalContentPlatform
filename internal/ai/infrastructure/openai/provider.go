@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/ksamwang/PersonalContentPlatform/internal/ai/infrastructure/anthropic"
 	"github.com/ksamwang/PersonalContentPlatform/internal/ai/ports"
 	settingsports "github.com/ksamwang/PersonalContentPlatform/internal/settings/ports"
 	"net/http"
@@ -85,6 +86,9 @@ func (r *Resolver) Resolve(ctx context.Context, ws uuid.UUID) (ports.Provider, s
 	}
 	if cfg.BaseURL == "" || cfg.APIKey == "" || cfg.Model == "" {
 		return nil, "", fmt.Errorf("AI provider configuration is incomplete")
+	}
+	if cfg.Provider == "anthropic-compatible" {
+		return anthropic.New(cfg.BaseURL, cfg.APIKey, cfg.Model), cfg.Model, nil
 	}
 	return New(cfg.BaseURL, cfg.APIKey, cfg.Model), cfg.Model, nil
 }

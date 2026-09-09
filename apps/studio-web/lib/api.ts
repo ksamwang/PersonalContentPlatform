@@ -58,6 +58,7 @@ export type GeneralSettings = {
 };
 export type StorageSettings = { id?: string; name: string; provider: "filesystem"|"s3"|"r2"|"oss"; endpoint: string; region: string; bucket: string; access_key_mask?: string; secret_key_set?: boolean; base_path: string; active?: boolean };
 export type AISettings = { provider: string; base_url: string; api_key_mask?: string; api_key_set?: boolean; model: string; purpose_models: Record<string,string> };
+export type SaveAISettings = Pick<AISettings,"provider"|"base_url"|"model"|"purpose_models"> & {api_key?:string};
 export type WorkspaceSettings = { general: GeneralSettings; storage: StorageSettings|null; ai: AISettings; can_edit: boolean };
 export type WebhookEndpoint = {id:string;name:string;url:string;secret_set:boolean;enabled:boolean;event_types:string[]};
 export type InboxItem = { id:string; kind:"text"|"link"; raw_text:string; source_url?:string; state:"pending"|"converted"|"archived"; converted_content_id?:string; created_at:string; updated_at:string };
@@ -92,8 +93,8 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json();
 }
 
-async function requestItems<T>(path: string): Promise<{ items: T[] }> {
-  const response = await request<{ items?: T[] | null }>(path);
+async function requestItems<T>(path: string, init?:RequestInit): Promise<{ items: T[] }> {
+  const response = await request<{ items?: T[] | null }>(path,init);
   return { items: Array.isArray(response.items) ? response.items : [] };
 }
 
@@ -184,7 +185,8 @@ export const api = {
   saveSettings: <K extends keyof GeneralSettings>(ws: string, section: K, value: GeneralSettings[K]) => request<GeneralSettings>(`/v1/workspaces/${ws}/settings/${section}`, { method: "PUT", body: JSON.stringify(value) }),
   saveStorage: (ws: string, value: StorageSettings & { access_key?: string; secret_key?: string }) => request<StorageSettings>(`/v1/workspaces/${ws}/settings/storage`, { method: "PUT", body: JSON.stringify(value) }),
   testStorage: (ws: string) => request<{ok:boolean}>(`/v1/workspaces/${ws}/settings/storage:test`, { method: "POST" }),
-  saveAI: (ws: string, value: AISettings & { api_key?: string }) => request<AISettings>(`/v1/workspaces/${ws}/settings/ai`, { method: "PUT", body: JSON.stringify(value) }),
+  saveAI: (ws: string, value: SaveAISettings) => request<AISettings>(`/v1/workspaces/${ws}/settings/ai`, { method: "PUT", body: JSON.stringify(value) }),
+  aiModels: (ws:string,value:{provider:string;base_url:string;api_key?:string}) => requestItems<{id:string}>(`/v1/workspaces/${ws}/settings/ai:models`,{method:"POST",body:JSON.stringify(value)}),
   testAI: (ws: string) => request<{ok:boolean}>(`/v1/workspaces/${ws}/settings/ai:test`, { method: "POST" }),
   webhooks: (ws:string)=>requestItems<WebhookEndpoint>(`/v1/workspaces/${ws}/webhooks`),
   createWebhook:(ws:string,value:{name:string;url:string;secret:string;event_types:string[]})=>request<WebhookEndpoint>(`/v1/workspaces/${ws}/webhooks`,{method:"POST",body:JSON.stringify(value)}),

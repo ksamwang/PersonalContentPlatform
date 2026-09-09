@@ -30,7 +30,30 @@ func (h *HTTP) Register(r chi.Router) {
 		r.Put("/v1/workspaces/{workspaceID}/settings/ai", h.saveAI)
 		r.Post("/v1/workspaces/{workspaceID}/settings/storage:test", h.testStorage)
 		r.Post("/v1/workspaces/{workspaceID}/settings/ai:test", h.testAI)
+		r.Post("/v1/workspaces/{workspaceID}/settings/ai:models", h.listAIModels)
 	})
+}
+
+func (h *HTTP) listAIModels(w http.ResponseWriter, r *http.Request) {
+	if !owner(w, r) {
+		return
+	}
+	var input struct {
+		Provider string `json:"provider"`
+		BaseURL  string `json:"base_url"`
+		APIKey   string `json:"api_key"`
+	}
+	if err := httpx.Decode(w, r, &input); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	workspaceID, _, _ := principal(r)
+	models, err := h.service.ListAIModels(r.Context(), workspaceID, input.Provider, input.BaseURL, input.APIKey)
+	if err != nil {
+		httpx.Error(w, http.StatusUnprocessableEntity, "ai_models_failed", err.Error())
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"items": models})
 }
 func (h *HTTP) public(w http.ResponseWriter, r *http.Request) {
 	v, err := h.service.Public(r.Context(), chi.URLParam(r, "workspace"))

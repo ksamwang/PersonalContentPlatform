@@ -349,6 +349,8 @@ select:focus-visible,
 .settings-check { min-height: 44px; display: flex; align-items: center; gap: 10px; font-weight: 600; }
 .settings-check input { width: 18px; height: 18px; }
 .settings-test { min-height: 44px; justify-self: start; }
+.model-select-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; }
+.model-refresh { white-space:nowrap; }
 .settings-status { min-height: 22px; margin-top: 14px; color: var(--muted); }
 .settings-status.saved { color: #157347; }
 .settings-status.error { color: #a32118; }
@@ -415,6 +417,7 @@ select:focus-visible,
   .settings-fields { grid-template-columns: 1fr; }
   .settings-card > header { flex-direction: column; }
   .settings-card > header button { width: 100%; }
+  .model-select-row { grid-template-columns:1fr; }
   .webhook-list article,.webhook-list article > div:last-child { align-items: stretch; flex-direction: column; }
   .page-heading,.capture-heading,.capture-footer { align-items:stretch; flex-direction:column; }
   .state-filter { width:100%; }

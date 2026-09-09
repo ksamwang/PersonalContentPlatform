@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -22,6 +23,8 @@ import (
 
 func TestCorePlatformWorkflows(t *testing.T) {
 	fixture := newSmokeFixture(t)
+	provider := newFakeOpenAIProvider(t)
+	defer provider.Close()
 	client := fixture.client
 	workspaceBase := "/v1/workspaces/" + fixture.workspaceID.String()
 
@@ -56,11 +59,20 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	if publicSettings["site"].(map[string]any)["name"] != "Smoke Notes" {
 		t.Fatalf("public settings not applied: %#v", publicSettings)
 	}
-	client.json(http.MethodPut, workspaceBase+"/settings/ai", map[string]any{"provider": "openai-compatible", "base_url": "https://example.invalid/v1", "api_key": "smoke-secret", "model": "smoke-model", "purpose_models": map[string]string{"summary": "smoke-summary"}}, &settings.AI, http.StatusOK)
+	client.json(http.MethodPut, workspaceBase+"/settings/ai", map[string]any{"provider": "openai-compatible", "base_url": provider.URL + "/v1", "api_key": "smoke-secret", "model": "smoke-model", "purpose_models": map[string]string{"summary": "smoke-summary"}}, &settings.AI, http.StatusOK)
 	if !settings.AI.APIKeySet || settings.AI.APIKey != "" || settings.AI.APIKeyMask == "" {
 		t.Fatalf("AI secret was not masked: %#v", settings.AI)
 	}
-	client.json(http.MethodPost, workspaceBase+"/settings/ai:test", nil, nil, http.StatusUnprocessableEntity)
+	var models struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}
+	client.json(http.MethodPost, workspaceBase+"/settings/ai:models", map[string]any{"provider": "openai-compatible", "base_url": provider.URL + "/v1"}, &models, http.StatusOK)
+	if len(models.Items) != 2 || models.Items[0].ID != "smoke-model" {
+		t.Fatalf("unexpected provider models: %#v", models.Items)
+	}
+	client.json(http.MethodPost, workspaceBase+"/settings/ai:test", nil, nil, http.StatusOK)
 	if _, err := fixture.db.Exec(t.Context(), `UPDATE memberships SET role='editor' WHERE workspace_id=$1 AND user_id=$2`, fixture.workspaceID, fixture.userID); err != nil {
 		t.Fatal(err)
 	}
@@ -292,6 +304,24 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	assertRSS(t, client.base, fixture.workspace)
 	client.json(http.MethodPost, "/v1/auth/logout", nil, nil, http.StatusNoContent)
 	client.json(http.MethodGet, "/v1/auth/me", nil, nil, http.StatusUnauthorized)
+}
+
+func newFakeOpenAIProvider(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer smoke-secret" {
+			t.Errorf("missing provider authorization")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v1/models":
+			_, _ = w.Write([]byte(`{"data":[{"id":"smoke-model-z"},{"id":"smoke-model"}]}`))
+		case "/v1/chat/completions":
+			_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"OK"}}],"usage":{"prompt_tokens":2,"completion_tokens":1}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
 }
 
 func createEntity(t *testing.T, client apiClient, workspaceBase, kind, name string) knowledgedomain.Entity {
