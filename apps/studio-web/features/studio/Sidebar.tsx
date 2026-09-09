@@ -7,8 +7,8 @@ import {
   Shapes,
 } from "lucide-react";
 
-export type StudioView = "content"|"inbox"|"collections"|"settings";
-export function Sidebar({ onNavigate, onSearch, view, publicSite }: { onNavigate: (view:StudioView) => void; onSearch: () => void; view: StudioView; publicSite:string }) {
+export type StudioView = "content"|"inbox"|"collections"|"discover"|"settings";
+export function Sidebar({ onNavigate, view, publicSite }: { onNavigate: (view:StudioView) => void; view: StudioView; publicSite:string }) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -31,7 +31,7 @@ export function Sidebar({ onNavigate, onSearch, view, publicSite }: { onNavigate
           <Shapes aria-hidden size={19} />
           <span>合集</span>
         </button>
-        <button onClick={onSearch}>
+        <button className={view === "discover" ? "active" : ""} onClick={()=>onNavigate("discover")}>
           <Search aria-hidden size={19} />
           <span>发现</span>
         </button>

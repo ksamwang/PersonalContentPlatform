@@ -449,6 +449,8 @@ select:focus-visible,
   display: flex;
   gap: 12px;
 }
+.content-filters { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin:-12px 0 18px; }
+.content-filters select,.content-filters input { min-width:0; min-height:40px; padding:0 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); }
 .search-box {
   min-height: 44px;
   width: min(300px, 30vw);
@@ -503,13 +505,27 @@ select:focus-visible,
   border-bottom: 1px solid var(--border);
   background: transparent;
   padding: 14px 16px;
-  display: grid;
-  grid-template-columns: 38px 1fr auto;
+  position:relative;
+  display: block;
+  padding:0;
+}
+.content-row-open {
+  width:100%; min-height:84px; border:0; background:transparent; padding:14px 82px 14px 16px;
+  display:grid; grid-template-columns:38px 1fr auto;
   align-items: center;
   gap: 12px;
   text-align: left;
   transition: background 0.2s;
 }
+.content-row-actions { position:absolute; right:8px; top:50%; transform:translateY(-50%); display:flex; opacity:0; }
+.content-row:hover .content-row-actions,.content-row:focus-within .content-row-actions { opacity:1; }
+.content-row-actions button { width:34px; height:34px; display:grid; place-items:center; border:0; border-radius:7px; background:var(--surface); }
+.content-row-actions svg { width:16px; }
+.discover-page { width:min(1100px,100%); margin:0 auto; }
+.discover-search { display:grid; grid-template-columns:auto minmax(0,1fr) 150px auto; align-items:center; gap:10px; padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--surface); }
+.discover-search input,.discover-search select { min-height:44px; border:0; background:transparent; }
+.discover-status { min-height:24px; color:var(--muted); }
+.discover-results { overflow:hidden; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); }
 .content-row:hover,
 .content-row.selected {
   background: var(--surface-2);
@@ -750,6 +766,7 @@ select:focus-visible,
   .workspace {
     padding: 20px;
   }
+  .content-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .topbar {
     align-items: start;
   }
@@ -784,6 +801,7 @@ select:focus-visible,
   }
 }
 @media (max-width: 560px) {
+  .content-filters,.discover-search { grid-template-columns:1fr; }
   .topbar {
     display: block;
   }

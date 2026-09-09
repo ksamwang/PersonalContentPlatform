@@ -115,16 +115,21 @@ export const api = {
       body: JSON.stringify(input),
     }),
   logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
-  list: (ws: string) =>
-    requestItems<Content>(`/v1/workspaces/${ws}/contents`),
+  list: (ws: string,filters:Record<string,string>={}) => {
+    const params=new URLSearchParams(Object.entries(filters).filter(([,value])=>value));
+    return requestItems<Content>(`/v1/workspaces/${ws}/contents${params.size?`?${params}`:""}`);
+  },
   content: (ws: string, id: string) =>
     request<Content>(`/v1/workspaces/${ws}/contents/${id}`),
   updateContentProperties: (ws:string,id:string,value:{localization_id:string;slug:string;visibility:string}) =>
     request<void>(`/v1/workspaces/${ws}/contents/${id}`,{method:"PATCH",body:JSON.stringify(value)}),
-  search: (ws: string, q: string) =>
+  search: (ws: string, q: string,locale="") =>
     requestItems<Content>(
-      `/v1/workspaces/${ws}/search?q=${encodeURIComponent(q)}`,
+      `/v1/workspaces/${ws}/search?q=${encodeURIComponent(q)}${locale?`&locale=${encodeURIComponent(locale)}`:""}`,
     ),
+  archiveContent:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/contents/${id}:archive`,{method:"POST"}),
+  restoreContent:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/contents/${id}:restore`,{method:"POST"}),
+  deleteContent:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/contents/${id}`,{method:"DELETE"}),
   create: (ws: string, input: object) =>
     request<Content>(`/v1/workspaces/${ws}/contents`, {
       method: "POST",

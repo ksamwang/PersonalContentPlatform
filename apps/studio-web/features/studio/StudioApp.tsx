@@ -13,6 +13,8 @@ import { SettingsPanel } from "../settings/SettingsPanel";
 import { InboxPanel } from "../inbox/InboxPanel";
 import { CollectionsPanel } from "../collections/CollectionsPanel";
 import { StudioView } from "./Sidebar";
+import { ContentFilters, ContentFilter, emptyContentFilter } from "./ContentFilters";
+import { DiscoverPanel } from "./DiscoverPanel";
 export function StudioApp() {
   const [user, setUser] = useState<Principal | null | undefined>(undefined),
     [items, setItems] = useState<Content[]>([]),
@@ -20,16 +22,16 @@ export function StudioApp() {
     [query, setQuery] = useState(""),
     [loadError, setLoadError] = useState(""),
     [view, setView] = useState<StudioView>("content"),
+    [filters,setFilters]=useState<ContentFilter>(emptyContentFilter),
     [publicSite,setPublicSite] = useState("http://localhost:3000/zh");
   const searchRef = useRef<HTMLInputElement>(null);
   const load = useCallback(
     async (p = user, q = query) => {
       if (!p) return;
       try {
-        const result = q
-          ? await api.search(p.WorkspaceID, q)
-          : await api.list(p.WorkspaceID);
-        setItems(result.items);
+        const result = q ? await api.search(p.WorkspaceID, q, filters.locale) : await api.list(p.WorkspaceID,filters);
+        const sorted=filters.sort==="title"?[...result.items].sort((a,b)=>(a.localizations[0]?.current_revision?.title??"").localeCompare(b.localizations[0]?.current_revision?.title??"","zh-CN")):result.items;
+        setItems(sorted);
         setLoadError("");
         if (selected) {
           setSelected(result.items.find((i) => i.id === selected.id) ?? selected);
@@ -38,7 +40,7 @@ export function StudioApp() {
         setLoadError(err instanceof Error ? err.message : "内容加载失败");
       }
     },
-    [user, query, selected],
+    [user, query, selected, filters],
   );
   useEffect(() => {
     api
@@ -51,7 +53,11 @@ export function StudioApp() {
     void api.settings(user.WorkspaceID).then(v=>{if(v.general.site.public_url)setPublicSite(v.general.site.public_url)}).catch(()=>{});
     const timer = setTimeout(() => void load(user, query), query ? 300 : 0);
     return () => clearTimeout(timer);
-  }, [user, query]);
+  }, [user, query, filters]);
+  async function lifecycle(action:"archive"|"restore"|"delete",content:Content){
+    if(action==="delete"&&!window.confirm("确认将此内容移至回收站？公开页面会立即下线。"))return;
+    try{if(action==="archive")await api.archiveContent(user!.WorkspaceID,content.id);else if(action==="restore")await api.restoreContent(user!.WorkspaceID,content.id);else await api.deleteContent(user!.WorkspaceID,content.id);if(selected?.id===content.id)setSelected(undefined);await load(user," ".trim())}catch(error){setLoadError(error instanceof Error?error.message:"操作失败")}
+  }
   if (user === undefined)
     return (
       <main id="main" className="boot-screen" aria-busy="true">
@@ -62,7 +68,7 @@ export function StudioApp() {
   if (!user) return <AuthPanel onAuthenticated={setUser} />;
   return (
     <div className="studio">
-      <Sidebar view={view} publicSite={publicSite} onNavigate={setView} onSearch={() => { setView("content"); setTimeout(() => searchRef.current?.focus(), 0); }} />
+      <Sidebar view={view} publicSite={publicSite} onNavigate={setView} />
       <main id="main" className="workspace">
         {view === "settings" ? (
           <SettingsPanel workspace={user.WorkspaceID} role={user.Role} />
@@ -70,6 +76,8 @@ export function StudioApp() {
           <InboxPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{const content=await api.content(user.WorkspaceID,id);setSelected(content);setView("content");void load(user,"")}catch(err){setLoadError(err instanceof Error?err.message:"内容加载失败");setView("content")}}}/>
         ) : view === "collections" ? (
           <CollectionsPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{const content=await api.content(user.WorkspaceID,id);setSelected(content);setView("content")}catch(err){setLoadError(err instanceof Error?err.message:"内容加载失败");setView("content")}}}/>
+        ) : view === "discover" ? (
+          <DiscoverPanel workspace={user.WorkspaceID} onOpen={content=>{setSelected(content);setView("content")}}/>
         ) : (<>
         <header className="topbar">
           <div>
@@ -98,6 +106,7 @@ export function StudioApp() {
             />
           </div>
         </header>
+        <ContentFilters value={filters} onChange={setFilters}/>
         <div className="studio-grid">
           <section className="library-pane" aria-label="内容列表">
             <div className="pane-meta">
@@ -117,6 +126,10 @@ export function StudioApp() {
               searching={Boolean(query)}
               selected={selected?.id}
               onSelect={setSelected}
+              canEdit={user.Role==="owner"||user.Role==="editor"}
+              onArchive={content=>void lifecycle("archive",content)}
+              onRestore={content=>void lifecycle("restore",content)}
+              onDelete={content=>void lifecycle("delete",content)}
             />
           </section>
           {selected ? (

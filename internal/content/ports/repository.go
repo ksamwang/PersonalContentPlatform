@@ -11,8 +11,11 @@ import (
 type Repository interface {
 	Create(context.Context, uuid.UUID, uuid.UUID, domain.Type, string, string, string) (domain.Content, error)
 	CreateLocalization(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, string, string) (domain.Content, error)
-	List(context.Context, uuid.UUID, string, string, int) ([]domain.Content, error)
+	List(context.Context, uuid.UUID, domain.ListFilter) ([]domain.Content, error)
 	Get(context.Context, uuid.UUID, uuid.UUID) (domain.Content, error)
+	Archive(context.Context, uuid.UUID, uuid.UUID) error
+	Restore(context.Context, uuid.UUID, uuid.UUID) error
+	SoftDelete(context.Context, uuid.UUID, uuid.UUID) error
 	UpdateProperties(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, domain.Visibility) error
 	ReadinessSource(context.Context, uuid.UUID, uuid.UUID) (domain.ReadinessSource, error)
 	GetDraft(context.Context, uuid.UUID, uuid.UUID) (domain.Draft, error)

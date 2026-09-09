@@ -85,18 +85,30 @@ func (r *Repository) CreateLocalization(ctx context.Context, workspaceID, userID
 	return r.Get(ctx, workspaceID, contentID)
 }
 
-func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, locale, state string, limit int) ([]domain.Content, error) {
-	query := `SELECT c.object_id,c.workspace_id,c.type,c.default_locale,c.visibility,c.created_at,c.updated_at,l.id,l.locale,l.state,l.slug,l.translation_status,l.updated_at,rv.id,rv.seq,rv.schema_version,rv.title,rv.summary,rv.body_json,rv.metadata_json,rv.content_hash,rv.created_at FROM contents c JOIN content_localizations l ON l.content_id=c.object_id LEFT JOIN content_revisions rv ON rv.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.visibility IS NOT NULL AND l.deleted_at IS NULL`
+func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, filter domain.ListFilter) ([]domain.Content, error) {
+	query := `SELECT c.object_id,c.workspace_id,c.type,c.default_locale,c.visibility,c.created_at,c.updated_at,l.id,l.locale,l.state,l.slug,l.translation_status,l.updated_at,rv.id,rv.seq,rv.schema_version,rv.title,rv.summary,rv.body_json,rv.metadata_json,rv.content_hash,rv.created_at FROM contents c JOIN content_localizations l ON l.content_id=c.object_id LEFT JOIN content_revisions rv ON rv.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.deleted_at IS NULL AND l.deleted_at IS NULL`
 	args := []any{workspaceID}
-	if locale != "" {
-		args = append(args, locale)
+	if filter.Locale != "" {
+		args = append(args, filter.Locale)
 		query += fmt.Sprintf(" AND l.locale=$%d", len(args))
 	}
-	if state != "" {
-		args = append(args, state)
+	if filter.State != "" {
+		args = append(args, filter.State)
 		query += fmt.Sprintf(" AND l.state=$%d", len(args))
 	}
-	args = append(args, limit)
+	if filter.Type != "" {
+		args = append(args, filter.Type)
+		query += fmt.Sprintf(" AND c.type=$%d", len(args))
+	}
+	if filter.Visibility != "" {
+		args = append(args, filter.Visibility)
+		query += fmt.Sprintf(" AND c.visibility=$%d", len(args))
+	}
+	if filter.Tag != "" {
+		args = append(args, filter.Tag)
+		query += fmt.Sprintf(" AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(CASE WHEN jsonb_typeof(rv.metadata_json->'tags')='array' THEN rv.metadata_json->'tags' ELSE '[]'::jsonb END) tag(value) WHERE lower(tag.value)=lower($%d))", len(args))
+	}
+	args = append(args, filter.Limit)
 	query += fmt.Sprintf(" ORDER BY c.updated_at DESC LIMIT $%d", len(args))
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
@@ -107,7 +119,7 @@ func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, locale, st
 	return aggregateContents(items), err
 }
 func (r *Repository) Get(ctx context.Context, workspaceID, contentID uuid.UUID) (domain.Content, error) {
-	rows, err := r.db.Query(ctx, `SELECT c.object_id,c.workspace_id,c.type,c.default_locale,c.visibility,c.created_at,c.updated_at,l.id,l.locale,l.state,l.slug,l.translation_status,l.updated_at,rv.id,rv.seq,rv.schema_version,rv.title,rv.summary,rv.body_json,rv.metadata_json,rv.content_hash,rv.created_at FROM contents c JOIN content_localizations l ON l.content_id=c.object_id LEFT JOIN content_revisions rv ON rv.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.object_id=$2 AND l.deleted_at IS NULL ORDER BY l.locale`, workspaceID, contentID)
+	rows, err := r.db.Query(ctx, `SELECT c.object_id,c.workspace_id,c.type,c.default_locale,c.visibility,c.created_at,c.updated_at,l.id,l.locale,l.state,l.slug,l.translation_status,l.updated_at,rv.id,rv.seq,rv.schema_version,rv.title,rv.summary,rv.body_json,rv.metadata_json,rv.content_hash,rv.created_at FROM contents c JOIN content_localizations l ON l.content_id=c.object_id LEFT JOIN content_revisions rv ON rv.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.object_id=$2 AND c.deleted_at IS NULL AND l.deleted_at IS NULL ORDER BY l.locale`, workspaceID, contentID)
 	if err != nil {
 		return domain.Content{}, err
 	}
@@ -124,6 +136,75 @@ func (r *Repository) Get(ctx context.Context, workspaceID, contentID uuid.UUID) 
 		result.Localizations = append(result.Localizations, item.Localizations...)
 	}
 	return result, nil
+}
+
+func (r *Repository) Archive(ctx context.Context, workspaceID, contentID uuid.UUID) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	tag, err := tx.Exec(ctx, `UPDATE content_localizations SET state='archived',updated_at=now() WHERE workspace_id=$1 AND content_id=$2 AND deleted_at IS NULL AND state<>'archived'`, workspaceID, contentID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	if _, err = tx.Exec(ctx, `UPDATE contents SET updated_at=now() WHERE workspace_id=$1 AND object_id=$2 AND deleted_at IS NULL`, workspaceID, contentID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM search_documents WHERE workspace_id=$1 AND object_id=$2`, workspaceID, contentID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM publication_views WHERE workspace_id=$1 AND content_id=$2`, workspaceID, contentID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (r *Repository) Restore(ctx context.Context, workspaceID, contentID uuid.UUID) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	tag, err := tx.Exec(ctx, `UPDATE content_localizations SET state='draft',translation_status=CASE WHEN source_locale IS NULL THEN 'draft' WHEN translation_status='published' THEN 'needs_review' ELSE translation_status END,updated_at=now() WHERE workspace_id=$1 AND content_id=$2 AND deleted_at IS NULL AND state='archived'`, workspaceID, contentID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	if _, err = tx.Exec(ctx, `UPDATE contents SET updated_at=now() WHERE workspace_id=$1 AND object_id=$2 AND deleted_at IS NULL`, workspaceID, contentID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (r *Repository) SoftDelete(ctx context.Context, workspaceID, contentID uuid.UUID) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	tag, err := tx.Exec(ctx, `UPDATE contents SET deleted_at=now(),updated_at=now() WHERE workspace_id=$1 AND object_id=$2 AND deleted_at IS NULL`, workspaceID, contentID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	if _, err = tx.Exec(ctx, `UPDATE content_localizations SET deleted_at=now(),updated_at=now() WHERE workspace_id=$1 AND content_id=$2 AND deleted_at IS NULL`, workspaceID, contentID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM search_documents WHERE workspace_id=$1 AND object_id=$2`, workspaceID, contentID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM publication_views WHERE workspace_id=$1 AND content_id=$2`, workspaceID, contentID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 func (r *Repository) UpdateProperties(ctx context.Context, workspaceID, contentID, localizationID uuid.UUID, slug string, visibility domain.Visibility) error {
 	tx, err := r.db.Begin(ctx)

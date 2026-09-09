@@ -62,12 +62,64 @@ func (h *HTTP) create(w http.ResponseWriter, r *http.Request) {
 func (h *HTTP) list(w http.ResponseWriter, r *http.Request) {
 	workspaceID, _ := principal(r)
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	items, err := h.service.List(r.Context(), workspaceID, r.URL.Query().Get("locale"), r.URL.Query().Get("state"), limit)
+	items, err := h.service.List(r.Context(), workspaceID, domain.ListFilter{
+		Locale: r.URL.Query().Get("locale"), State: r.URL.Query().Get("state"),
+		Type: domain.Type(r.URL.Query().Get("type")), Visibility: domain.Visibility(r.URL.Query().Get("visibility")),
+		Tag: r.URL.Query().Get("tag"), Limit: limit,
+	})
 	if err != nil {
 		httpx.Error(w, 500, "content_list_failed", "could not load content")
 		return
 	}
 	httpx.JSON(w, 200, map[string]any{"items": items})
+}
+
+func (h *HTTP) archive(w http.ResponseWriter, r *http.Request) {
+	if !editorRequired(w, r) {
+		return
+	}
+	id, ok := parseID(w, r, "contentID")
+	if !ok {
+		return
+	}
+	workspaceID, _ := principal(r)
+	if err := h.service.Archive(r.Context(), workspaceID, id); err != nil {
+		httpx.Error(w, 404, "content_not_found", "content was not found")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *HTTP) restore(w http.ResponseWriter, r *http.Request) {
+	if !editorRequired(w, r) {
+		return
+	}
+	id, ok := parseID(w, r, "contentID")
+	if !ok {
+		return
+	}
+	workspaceID, _ := principal(r)
+	if err := h.service.Restore(r.Context(), workspaceID, id); err != nil {
+		httpx.Error(w, 404, "content_not_found", "content was not found")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *HTTP) remove(w http.ResponseWriter, r *http.Request) {
+	if !editorRequired(w, r) {
+		return
+	}
+	id, ok := parseID(w, r, "contentID")
+	if !ok {
+		return
+	}
+	workspaceID, _ := principal(r)
+	if err := h.service.SoftDelete(r.Context(), workspaceID, id); err != nil {
+		httpx.Error(w, 404, "content_not_found", "content was not found")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 func (h *HTTP) get(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(w, r, "contentID")

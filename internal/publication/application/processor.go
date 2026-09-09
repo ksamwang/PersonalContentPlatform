@@ -79,15 +79,38 @@ func (p *Processor) processOne(ctx context.Context) (bool, error) {
 	return true, tx.Commit(ctx)
 }
 func (p *Processor) indexContent(ctx context.Context, tx pgx.Tx, e event) error {
-	var objectID, revisionID uuid.UUID
-	var locale, visibility, title, summary string
-	var body []byte
-	err := tx.QueryRow(ctx, `SELECT c.object_id,r.id,l.locale,c.visibility,r.title,r.summary,r.body_json FROM contents c JOIN content_localizations l ON l.content_id=c.object_id JOIN content_revisions r ON r.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.object_id=$2`, e.WorkspaceID, e.AggregateID).Scan(&objectID, &revisionID, &locale, &visibility, &title, &summary, &body)
+	rows, err := tx.Query(ctx, `SELECT c.object_id,r.id,l.locale,c.visibility,r.title,r.summary,r.body_json FROM contents c JOIN content_localizations l ON l.content_id=c.object_id JOIN content_revisions r ON r.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.object_id=$2 AND c.deleted_at IS NULL AND l.deleted_at IS NULL AND l.state<>'archived'`, e.WorkspaceID, e.AggregateID)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO search_documents(workspace_id,object_id,revision_id,locale,visibility,title,summary,body_text) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(workspace_id,object_id,locale) DO UPDATE SET revision_id=EXCLUDED.revision_id,visibility=EXCLUDED.visibility,title=EXCLUDED.title,summary=EXCLUDED.summary,body_text=EXCLUDED.body_text,updated_at=now()`, e.WorkspaceID, objectID, revisionID, locale, visibility, title, summary, document.PlainText(body))
-	return err
+	type indexedContent struct {
+		objectID, revisionID               uuid.UUID
+		locale, visibility, title, summary string
+		body                               []byte
+	}
+	items := []indexedContent{}
+	for rows.Next() {
+		var item indexedContent
+		if err = rows.Scan(&item.objectID, &item.revisionID, &item.locale, &item.visibility, &item.title, &item.summary, &item.body); err != nil {
+			rows.Close()
+			return err
+		}
+		items = append(items, item)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM search_documents WHERE workspace_id=$1 AND object_id=$2`, e.WorkspaceID, e.AggregateID); err != nil {
+		return err
+	}
+	for _, item := range items {
+		if _, err = tx.Exec(ctx, `INSERT INTO search_documents(workspace_id,object_id,revision_id,locale,visibility,title,summary,body_text) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, e.WorkspaceID, item.objectID, item.revisionID, item.locale, item.visibility, item.title, item.summary, document.PlainText(item.body)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 func (p *Processor) publishWebsite(ctx context.Context, tx pgx.Tx, e event) error {
 	publicationID := e.AggregateID

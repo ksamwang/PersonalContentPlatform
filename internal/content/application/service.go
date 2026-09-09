@@ -75,14 +75,23 @@ func (s *Service) CreateLocalization(ctx context.Context, workspaceID, userID, c
 	}
 	return s.repo.CreateLocalization(ctx, workspaceID, userID, contentID, locale, slug, sourceLocale)
 }
-func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, locale, state string, limit int) ([]domain.Content, error) {
-	if limit < 1 || limit > 100 {
-		limit = 30
+func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, filter domain.ListFilter) ([]domain.Content, error) {
+	if filter.Limit < 1 || filter.Limit > 100 {
+		filter.Limit = 30
 	}
-	return s.repo.List(ctx, workspaceID, locale, state, limit)
+	return s.repo.List(ctx, workspaceID, filter)
 }
 func (s *Service) Get(ctx context.Context, workspaceID, contentID uuid.UUID) (domain.Content, error) {
 	return s.repo.Get(ctx, workspaceID, contentID)
+}
+func (s *Service) Archive(ctx context.Context, workspaceID, contentID uuid.UUID) error {
+	return s.repo.Archive(ctx, workspaceID, contentID)
+}
+func (s *Service) Restore(ctx context.Context, workspaceID, contentID uuid.UUID) error {
+	return s.repo.Restore(ctx, workspaceID, contentID)
+}
+func (s *Service) SoftDelete(ctx context.Context, workspaceID, contentID uuid.UUID) error {
+	return s.repo.SoftDelete(ctx, workspaceID, contentID)
 }
 func (s *Service) UpdateProperties(ctx context.Context, workspaceID, contentID, localizationID uuid.UUID, slug string, visibility domain.Visibility) error {
 	slug = strings.ToLower(strings.TrimSpace(slug))

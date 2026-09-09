@@ -1,4 +1,4 @@
-import { FileText, StickyNote, PanelTop } from "lucide-react";
+import { Archive, ArchiveRestore, FileText, StickyNote, PanelTop, Trash2 } from "lucide-react";
 import { Content } from "../../lib/api";
 const icons = { article: FileText, note: StickyNote, page: PanelTop };
 export function ContentList({
@@ -6,11 +6,19 @@ export function ContentList({
   selected,
   onSelect,
   searching,
+  canEdit,
+  onArchive,
+  onRestore,
+  onDelete,
 }: {
   items: Content[];
   selected?: string;
   onSelect: (c: Content) => void;
   searching?: boolean;
+  canEdit?: boolean;
+  onArchive?: (content:Content)=>void;
+  onRestore?: (content:Content)=>void;
+  onDelete?: (content:Content)=>void;
 }) {
   if (!items.length)
     return (
@@ -30,14 +38,10 @@ export function ContentList({
         const locale = item.localizations[0],
           revision = locale?.current_revision,
           Icon = icons[item.type];
+        const archived=item.localizations.every(value=>value.state==="archived");
         return (
-          <button
-            key={item.id}
-            className={
-              selected === item.id ? "content-row selected" : "content-row"
-            }
-            onClick={() => onSelect(item)}
-          >
+          <article key={item.id} className={selected === item.id ? "content-row selected" : "content-row"}>
+          <button className="content-row-open" onClick={() => onSelect(item)}>
             <span className="type-icon">
               <Icon aria-hidden size={18} />
             </span>
@@ -49,6 +53,8 @@ export function ContentList({
             </span>
             <span className={`status ${locale?.state}`}>{locale?.state}</span>
           </button>
+          {canEdit&&<span className="content-row-actions">{archived?<button aria-label={`恢复 ${revision?.title||"无标题"}`} title="恢复" onClick={()=>onRestore?.(item)}><ArchiveRestore/></button>:<button aria-label={`归档 ${revision?.title||"无标题"}`} title="归档" onClick={()=>onArchive?.(item)}><Archive/></button>}<button className="danger-icon" aria-label={`删除 ${revision?.title||"无标题"}`} title="移至回收站" onClick={()=>onDelete?.(item)}><Trash2/></button></span>}
+          </article>
         );
       })}
     </div>

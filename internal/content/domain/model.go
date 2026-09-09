@@ -34,6 +34,15 @@ type Content struct {
 	UpdatedAt     time.Time      `json:"updated_at"`
 	Localizations []Localization `json:"localizations,omitempty"`
 }
+
+type ListFilter struct {
+	Locale     string
+	State      string
+	Type       Type
+	Visibility Visibility
+	Tag        string
+	Limit      int
+}
 type Localization struct {
 	ID                uuid.UUID `json:"id"`
 	ContentID         uuid.UUID `json:"content_id"`
