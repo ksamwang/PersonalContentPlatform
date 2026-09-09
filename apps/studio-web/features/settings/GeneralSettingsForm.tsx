@@ -17,6 +17,9 @@ export function GeneralSettingsForm({value,setValue,save,canEdit}:{value:General
    <Field label="站点描述"><textarea disabled={!canEdit} value={value.site.description} onChange={e=>set("site","description",e.target.value)}/></Field>
    <Field label="关于页面"><textarea disabled={!canEdit} value={value.site.about} onChange={e=>set("site","about",e.target.value)}/></Field>
    <Field label="页脚"><input disabled={!canEdit} value={value.site.footer} onChange={e=>set("site","footer",e.target.value)}/></Field>
+   <Field label="站点主题"><select disabled={!canEdit} value={value.site.theme||"paper"} onChange={e=>set("site","theme",e.target.value)}><option value="paper">纸张编辑风</option><option value="minimal">现代极简</option><option value="dark">深色阅读</option></select></Field>
+   <Field label="强调色"><input disabled={!canEdit} type="color" value={value.site.accent_color||"#d82f76"} onChange={e=>set("site","accent_color",e.target.value)}/></Field>
+   <Field label="分享海报底部文案"><input disabled={!canEdit} value={value.site.share_footer||""} onChange={e=>set("site","share_footer",e.target.value)} placeholder="扫码阅读完整内容"/></Field>
    <label className="settings-check"><input disabled={!canEdit} type="checkbox" checked={value.site.rss_enabled} onChange={e=>set("site","rss_enabled",e.target.checked)}/>启用 RSS</label>
   </SettingsSection>
   <SettingsSection title="登录与发布" description="登录方式、会话期限和默认发布行为。会话期限应用于后续新会话。" canEdit={canEdit} onSave={async()=>{await save("auth");await save("publication")}}>

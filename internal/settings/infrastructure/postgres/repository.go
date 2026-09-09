@@ -19,7 +19,7 @@ func New(db *pgxpool.Pool) *Repository { return &Repository{db: db} }
 func defaults(name, slug string) domain.GeneralSettings {
 	return domain.GeneralSettings{
 		Workspace:   domain.WorkspaceSettings{Name: name, Slug: slug, DefaultLocale: "zh-CN", SupportedLocales: []string{"zh-CN", "en"}, Timezone: "Asia/Shanghai"},
-		Site:        domain.SiteSettings{Name: "Field Notes", RSSEnabled: true, Footer: "Capture · Connect · Publish"},
+		Site:        domain.SiteSettings{Name: "Field Notes", RSSEnabled: true, Footer: "Capture · Connect · Publish", Theme: "paper", AccentColor: "#d82f76"},
 		Auth:        domain.AuthSettings{PasswordLoginEnabled: true, PasskeyEnabled: true, SessionTTLHours: 720},
 		Publication: domain.PublicationSettings{DefaultChannel: "website"},
 	}

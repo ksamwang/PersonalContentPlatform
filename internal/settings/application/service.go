@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -137,6 +138,12 @@ func validateSection(section string, raw json.RawMessage) error {
 			if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 				return fmt.Errorf("public URL must be an absolute HTTP or HTTPS URL")
 			}
+		}
+		if v.Theme != "" && v.Theme != "paper" && v.Theme != "minimal" && v.Theme != "dark" {
+			return fmt.Errorf("unsupported site theme")
+		}
+		if v.AccentColor != "" && !regexp.MustCompile(`^#[0-9a-fA-F]{6}$`).MatchString(v.AccentColor) {
+			return fmt.Errorf("accent color must be a six-digit hex color")
 		}
 	case "auth":
 		var v domain.AuthSettings

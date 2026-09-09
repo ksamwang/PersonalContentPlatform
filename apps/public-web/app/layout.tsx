@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./index.css";
-export const metadata: Metadata = {
-  title: { default: "Field Notes", template: "%s — Field Notes" },
-  description: "Notes, essays and working knowledge.",
-};
+import { getPublicSettings, publicBase } from "../lib/content";
+export async function generateMetadata():Promise<Metadata>{const settings=await getPublicSettings();return {metadataBase:new URL(publicBase(settings)),title:{default:settings.site.name||"Field Notes",template:`%s — ${settings.site.name||"Field Notes"}`},description:settings.site.description||"Notes, essays and working knowledge.",openGraph:{siteName:settings.site.name,type:"website"}}}
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html>
+    <html lang="zh-CN">
       <body>
         <a className="skip-link" href="#content">
           Skip to content

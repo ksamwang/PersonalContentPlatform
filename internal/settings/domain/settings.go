@@ -21,6 +21,9 @@ type SiteSettings struct {
 	About       string `json:"about"`
 	Footer      string `json:"footer"`
 	RSSEnabled  bool   `json:"rss_enabled"`
+	Theme       string `json:"theme"`
+	AccentColor string `json:"accent_color"`
+	ShareFooter string `json:"share_footer"`
 }
 
 type AuthSettings struct {

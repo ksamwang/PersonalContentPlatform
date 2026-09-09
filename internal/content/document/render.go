@@ -141,7 +141,12 @@ func renderNode(out *bytes.Buffer, n Node) {
 			if value, ok := n.Attrs["width"].(float64); ok && value > 0 {
 				width = ` width="` + strconv.Itoa(int(value)) + `"`
 			}
-			out.WriteString(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(stringAttr(n.Attrs["alt"])) + `"` + width + `>`)
+			responsive := ""
+			if strings.HasPrefix(src, "/media/") && strings.HasSuffix(src, "/content-1280") {
+				base := strings.TrimSuffix(src, "/content-1280")
+				responsive = ` srcset="` + html.EscapeString(base+"/thumbnail") + ` 480w, ` + html.EscapeString(src) + ` 1280w, ` + html.EscapeString(base) + ` 1920w" sizes="(max-width: 820px) 100vw, 780px" loading="lazy"`
+			}
+			out.WriteString(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(stringAttr(n.Attrs["alt"])) + `"` + width + responsive + `>`)
 		}
 	case "table":
 		out.WriteString("<table>")

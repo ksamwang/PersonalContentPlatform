@@ -61,7 +61,7 @@ export type Asset = {
 export type AssetUsage={id:string;owner_id:string;owner_title:string;role:string};
 export type GeneralSettings = {
   workspace: { name: string; slug: string; default_locale: string; supported_locales: string[]; timezone: string };
-  site: { name: string; public_url: string; description: string; about: string; footer: string; rss_enabled: boolean };
+  site: { name: string; public_url: string; description: string; about: string; footer: string; rss_enabled: boolean; theme:string; accent_color:string; share_footer:string };
   auth: { password_login_enabled: boolean; passkey_enabled: boolean; session_ttl_hours: number };
   publication: { default_channel: string; auto_publish: boolean };
 };

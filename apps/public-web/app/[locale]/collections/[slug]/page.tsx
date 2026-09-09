@@ -1,0 +1,7 @@
+import type {Metadata} from "next";
+import {notFound} from "next/navigation";
+import {ContentCards} from "../../../../components/ContentCards";
+import {SiteHeader} from "../../../../components/SiteHeader";
+import {getCollection,getPublicSettings} from "../../../../lib/content";
+type Props={params:Promise<{locale:string;slug:string}>};export async function generateMetadata({params}:Props):Promise<Metadata>{const{locale,slug}=await params,value=await getCollection(locale==="zh"?"zh-CN":"en",slug);return value?{title:value.title}:{} }
+export default async function CollectionPage({params}:Props){const{locale,slug}=await params,[settings,value]=await Promise.all([getPublicSettings(),getCollection(locale==="zh"?"zh-CN":"en",slug)]);if(!value)notFound();return <div data-theme={settings.site.theme||"paper"} style={{"--accent":settings.site.accent_color||"#d82f76"} as React.CSSProperties}><SiteHeader locale={locale} name={settings.site.name} rss={settings.site.rss_enabled}/><main id="content" className="collection-page"><header><span className="kicker">COLLECTION</span><h1>{value.title}</h1></header>{value.sections.map(section=><section key={section.title} className="collection-section"><h2>{section.title}</h2>{section.items.length?<ContentCards items={section.items} locale={locale}/>:<p>{locale==="zh"?"本章节暂无已发布内容。":"No published items in this section."}</p>}</section>)}</main><footer><span>{settings.site.name}</span><span>{settings.site.footer}</span></footer></div>}

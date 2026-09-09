@@ -10,7 +10,7 @@ export default async function About({
   const zh = locale === "zh";
   const settings = await getPublicSettings();
   return (
-    <>
+    <div data-theme={settings.site.theme||"paper"} style={{"--accent":settings.site.accent_color||"#d82f76"} as React.CSSProperties}>
       <SiteHeader locale={locale} name={settings.site.name} rss={settings.site.rss_enabled} />
       <main id="content" className="article-shell">
         <article>
@@ -36,6 +36,6 @@ export default async function About({
         <span>{settings.site.name}</span>
         <span>{settings.site.footer}</span>
       </footer>
-    </>
+    </div>
   );
 }

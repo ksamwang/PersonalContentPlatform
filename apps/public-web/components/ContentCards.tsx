@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { PublishedPage } from "../lib/content";
+export function ContentCards({items,locale}:{items:PublishedPage[];locale:string}){return <div className="publication-index">{items.map(item=>{const cover=item.metadata?.cover_asset_id;return <Link className={cover?"":"without-cover"} key={`${item.content_id||item.slug}-${item.locale}`} href={`/${locale}/${item.type}/${item.slug}`}>{cover?<picture><source media="(max-width: 640px)" srcSet={`/media/${cover}/thumbnail`}/><img loading="lazy" src={`/media/${cover}/content-1280`} alt=""/></picture>:null}<span>{item.type}</span><strong>{item.title}</strong><p>{item.summary}</p>{item.metadata?.tags?.length?<small>{item.metadata.tags.slice(0,3).join(" · ")}</small>:<small/>}<ArrowUpRight aria-hidden /></Link>})}</div>}
