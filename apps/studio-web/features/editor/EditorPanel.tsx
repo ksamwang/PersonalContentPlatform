@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { Bold, Eye, Heading2, History, Italic, List, Quote, Save, Send } from "lucide-react";
+import { Eye, History, Save, Send } from "lucide-react";
 import { api, Content, Draft } from "../../lib/api";
+import { EditorToolbar } from "./EditorToolbar";
 import { RevisionPanel } from "./RevisionPanel";
+import { SlashCommandMenu } from "./SlashCommandMenu";
+import { editorExtensions } from "./extensions";
 export function EditorPanel({
   workspace,
   content,
@@ -28,7 +30,10 @@ export function EditorPanel({
     [loadError, setLoadError] = useState(""),
     [reloadToken, setReloadToken] = useState(0),
     [historyOpen,setHistoryOpen]=useState(false),
-    [revisionRefresh,setRevisionRefresh]=useState(0);
+    [revisionRefresh,setRevisionRefresh]=useState(0),
+    [focusMode,setFocusMode]=useState(false),
+    [slashOpen,setSlashOpen]=useState(false),
+    [characterCount,setCharacterCount]=useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef<Draft | null>(null);
   const titleRef = useRef("");
@@ -37,11 +42,16 @@ export function EditorPanel({
   const saveQueue = useRef<Promise<Draft | null>>(Promise.resolve(null));
   localizationRef.current = localization.id;
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: editorExtensions,
     content: "",
     immediatelyRender: false,
     editable: canEdit,
-    onUpdate: () => scheduleSave(),
+    onUpdate: ({editor}) => {
+      setCharacterCount(editor.getText().replace(/\s/g,"").length);
+      const {$from}=editor.state.selection;
+      setSlashOpen($from.parent.type.name==="paragraph"&&$from.parentOffset===1&&$from.parent.textContent==="/");
+      scheduleSave();
+    },
   });
   useEffect(()=>{editor?.setEditable(canEdit)},[editor,canEdit]);
   useEffect(() => {
@@ -59,6 +69,7 @@ export function EditorPanel({
         setSummary(d.summary);
         summaryRef.current = d.summary;
         editor?.commands.setContent(d.body, { emitUpdate: false });
+        setCharacterCount(editor?.getText().replace(/\s/g,"").length??0);
         setStatus("已保存");
       })
       .catch((err) => {
@@ -170,7 +181,7 @@ export function EditorPanel({
   if (!draft)
     return <section className="editor-panel skeleton" aria-busy="true" />;
   return (
-    <section className="editor-panel">
+    <section className={`editor-panel${focusMode?" focus-mode":""}`}>
       <header className="editor-header">
         <div>
           <span className="eyebrow">
@@ -216,44 +227,12 @@ export function EditorPanel({
           scheduleSave();
         }}
       />
-      <div className="toolbar" aria-label="编辑工具栏">
-        <button
-          aria-label="粗体"
-          aria-pressed={editor?.isActive("bold")}
-          onClick={() => editor?.chain().focus().toggleBold().run()}
-        >
-          <Bold />
-        </button>
-        <button
-          aria-label="斜体"
-          aria-pressed={editor?.isActive("italic")}
-          onClick={() => editor?.chain().focus().toggleItalic().run()}
-        >
-          <Italic />
-        </button>
-        <button
-          aria-label="二级标题"
-          aria-pressed={editor?.isActive("heading", { level: 2 })}
-          onClick={() =>
-            editor?.chain().focus().toggleHeading({ level: 2 }).run()
-          }
-        >
-          <Heading2 />
-        </button>
-        <button
-          aria-label="项目列表"
-          onClick={() => editor?.chain().focus().toggleBulletList().run()}
-        >
-          <List />
-        </button>
-        <button
-          aria-label="引用"
-          onClick={() => editor?.chain().focus().toggleBlockquote().run()}
-        >
-          <Quote />
-        </button>
+      {editor&&<EditorToolbar editor={editor} focusMode={focusMode} onFocusMode={()=>setFocusMode(v=>!v)}/>}
+      <div className="editor-canvas">
+        {editor&&<SlashCommandMenu editor={editor} open={slashOpen} onClose={()=>setSlashOpen(false)}/>}
+        <EditorContent editor={editor} className="prose-editor" />
       </div>
-      <EditorContent editor={editor} className="prose-editor" />
+      <footer className="editor-stats"><span>{characterCount.toLocaleString("zh-CN")} 字</span><span>约 {Math.max(1,Math.ceil(characterCount/400))} 分钟阅读</span><span>输入 / 可快速插入内容</span></footer>
       {historyOpen&&<RevisionPanel workspace={workspace} localizationID={localization.id} draftVersion={draft.version} canEdit={canEdit} refresh={revisionRefresh} onClose={()=>setHistoryOpen(false)} onRestored={applyRestoredDraft}/>}
     </section>
   );
