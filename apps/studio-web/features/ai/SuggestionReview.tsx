@@ -1,0 +1,8 @@
+import { Check, Clipboard, X } from "lucide-react";
+import { api, AISuggestion } from "../../lib/api";
+
+const labels:Record<string,string>={summary:"摘要",tags:"标签",seo:"SEO 优化",entities:"实体识别",alt_text:"图片 Alt",related:"相关内容"};
+export function SuggestionReview({workspace,items,canEdit,onReload,onOpenContent}:{workspace:string;items:AISuggestion[];canEdit:boolean;onReload:()=>Promise<void>;onOpenContent:(id:string)=>void}){
+ async function review(id:string,state:"accepted"|"rejected"){await api.reviewAISuggestion(workspace,id,state);await onReload()}
+ return <section className="suggestion-review"><header><div><h2>建议审核</h2><p>AI 产物不会自动覆盖内容，确认后再按需采用。</p></div><span>{items.filter(item=>item.state==="pending").length} 项待审核</span></header><div className="suggestion-list">{items.map(item=><article key={item.id}><div className="suggestion-meta"><button onClick={()=>onOpenContent(item.target_id)}>{item.target_title||item.target_id.slice(0,8)}</button><span>{labels[item.kind]??item.kind}</span><small>{item.state}</small></div><pre>{item.payload?.text??JSON.stringify(item.payload,null,2)}</pre><div className="suggestion-actions"><button className="secondary compact" onClick={()=>void navigator.clipboard.writeText(item.payload?.text??JSON.stringify(item.payload))}><Clipboard/>复制结果</button>{canEdit&&item.state==="pending"&&<><button className="secondary compact" onClick={()=>void review(item.id,"rejected")}><X/>拒绝</button><button className="primary compact" onClick={()=>void review(item.id,"accepted")}><Check/>接受</button></>}</div></article>)}{!items.length&&<div className="collection-empty"><p>还没有 AI 建议</p></div>}</div></section>
+}

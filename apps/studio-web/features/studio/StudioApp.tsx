@@ -16,6 +16,7 @@ import { StudioView } from "./Sidebar";
 import { ContentFilters, ContentFilter, emptyContentFilter } from "./ContentFilters";
 import { DiscoverPanel } from "./DiscoverPanel";
 import { KnowledgePanel } from "../knowledge/KnowledgePanel";
+import { AIAssistantPanel } from "../ai/AIAssistantPanel";
 export function StudioApp() {
   const [user, setUser] = useState<Principal | null | undefined>(undefined),
     [items, setItems] = useState<Content[]>([]),
@@ -87,6 +88,8 @@ export function StudioApp() {
           <AssetsPanel workspace={user.WorkspaceID} canEdit={user.Role==="owner"||user.Role==="editor"} onOpenContent={async id=>{try{setSelected(await api.content(user.WorkspaceID,id));setView("content")}catch(error){setLoadError(error instanceof Error?error.message:"内容加载失败")}}}/>
         ) : view === "knowledge" ? (
           <KnowledgePanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{setSelected(await api.content(user.WorkspaceID,id));setView("content")}catch(error){setLoadError(error instanceof Error?error.message:"内容加载失败")}}}/>
+        ) : view === "ai" ? (
+          <AIAssistantPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{setSelected(await api.content(user.WorkspaceID,id));setView("content")}catch(error){setLoadError(error instanceof Error?error.message:"内容加载失败")}}}/>
         ) : view === "discover" ? (
           <DiscoverPanel workspace={user.WorkspaceID} onOpen={content=>{setSelected(content);setView("content")}}/>
         ) : (<>

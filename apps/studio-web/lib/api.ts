@@ -79,6 +79,8 @@ export type EntityAlias={id:string;value:string;locale:string};
 export type KnowledgeEntity={id:string;type:string;canonical_name:string;description:string;aliases?:EntityAlias[];created_at:string};
 export type KnowledgeRelation={id:string;source_id:string;target_id:string;predicate:string;confirmed:boolean;created_at:string};
 export type KnowledgeMention={id:string;revision_id:string;entity_id:string;entity_name:string;content_id:string;content_title:string;locale:string;confidence:number;confirmed:boolean;created_at:string};
+export type AISuggestion={id:string;target_id:string;target_title:string;kind:string;payload:{text?:string};state:"pending"|"accepted"|"rejected";created_at:string};
+export type AIRun={id:string;purpose:string;provider:string;model:string;status:"running"|"succeeded"|"failed";usage:{input_tokens?:number;output_tokens?:number};error_code:string;started_at:string;completed_at?:string};
 export class APIError extends Error {
   constructor(
     public status: number,
@@ -251,4 +253,8 @@ export const api = {
   knowledgeMentions:(ws:string)=>requestItems<KnowledgeMention>(`/v1/workspaces/${ws}/knowledge/mentions`),
   extractKnowledgeMentions:(ws:string)=>requestItems<KnowledgeMention>(`/v1/workspaces/${ws}/knowledge/mentions:extract`,{method:"POST"}),
   confirmKnowledgeMention:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/knowledge/mentions/${id}:confirm`,{method:"POST"}),
+  aiSuggest:(ws:string,value:{target_id:string;purpose:string;input:string})=>request<{suggestion_id:string;state:string}>(`/v1/workspaces/${ws}/ai/suggestions`,{method:"POST",body:JSON.stringify(value)}),
+  aiSuggestions:(ws:string,state="")=>requestItems<AISuggestion>(`/v1/workspaces/${ws}/ai/suggestions${state?`?state=${state}`:""}`),
+  reviewAISuggestion:(ws:string,id:string,state:"accepted"|"rejected")=>request<void>(`/v1/workspaces/${ws}/ai/suggestions/${id}:review`,{method:"POST",body:JSON.stringify({state})}),
+  aiRuns:(ws:string)=>requestItems<AIRun>(`/v1/workspaces/${ws}/ai/runs`),
 };

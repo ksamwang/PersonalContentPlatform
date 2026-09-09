@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ksamwang/PersonalContentPlatform/internal/ai/ports"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/id"
+	"time"
 )
 
 type Service struct {
@@ -21,7 +22,14 @@ type ProviderResolver interface {
 
 func New(db *pgxpool.Pool, p ProviderResolver) *Service { return &Service{db: db, providers: p} }
 func (s *Service) Suggest(ctx context.Context, ws, user, target uuid.UUID, purpose, input string) (uuid.UUID, error) {
-	prompts := map[string]string{"summary": "Summarize the content concisely. Return plain text only.", "tags": "Suggest up to five precise tags as a JSON array.", "translation": "Translate faithfully while preserving structure. Return only the translation."}
+	prompts := map[string]string{
+		"summary":  "Create a concise, faithful summary for the supplied content. Return plain text only.",
+		"tags":     "Suggest up to five precise tags for the supplied content. Return a JSON array of strings only.",
+		"seo":      "Act as an SEO editor. Return one JSON object with seo_title, seo_description, slug, keywords, heading_suggestions and internal_link_suggestions. Keep claims faithful to the supplied content.",
+		"entities": "Extract people, organizations, brands, places and topics. Return a JSON array with type, canonical_name, aliases and confidence.",
+		"alt_text": "Write concise accessible alt text for every image represented in the supplied content. Return a JSON array with src and alt.",
+		"related":  "Suggest related content based only on supplied candidates. Return a JSON array with object_id and reason.",
+	}
 	system, ok := prompts[purpose]
 	if !ok {
 		return uuid.Nil, fmt.Errorf("unsupported AI purpose")
@@ -55,6 +63,60 @@ func (s *Service) Suggest(ctx context.Context, ws, user, target uuid.UUID, purpo
 		return uuid.Nil, err
 	}
 	return suggestionID, tx.Commit(ctx)
+}
+
+type Suggestion struct {
+	ID          uuid.UUID       `json:"id"`
+	TargetID    uuid.UUID       `json:"target_id"`
+	TargetTitle string          `json:"target_title"`
+	Kind        string          `json:"kind"`
+	Payload     json.RawMessage `json:"payload"`
+	State       string          `json:"state"`
+	CreatedAt   time.Time       `json:"created_at"`
+}
+type Run struct {
+	ID          uuid.UUID       `json:"id"`
+	Purpose     string          `json:"purpose"`
+	Provider    string          `json:"provider"`
+	Model       string          `json:"model"`
+	Status      string          `json:"status"`
+	Usage       json.RawMessage `json:"usage"`
+	ErrorCode   string          `json:"error_code"`
+	StartedAt   time.Time       `json:"started_at"`
+	CompletedAt *time.Time      `json:"completed_at,omitempty"`
+}
+
+func (s *Service) Suggestions(ctx context.Context, ws uuid.UUID, state string) ([]Suggestion, error) {
+	rows, err := s.db.Query(ctx, `SELECT s.id,s.target_object_id,COALESCE((SELECT rv.title FROM content_localizations l JOIN content_revisions rv ON rv.id=l.current_revision_id WHERE l.content_id=s.target_object_id ORDER BY (l.locale='zh-CN') DESC LIMIT 1),''),s.kind,s.payload,s.state,s.created_at FROM ai_suggestions s WHERE s.workspace_id=$1 AND ($2='' OR s.state=$2) ORDER BY s.created_at DESC LIMIT 100`, ws, state)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Suggestion{}
+	for rows.Next() {
+		var v Suggestion
+		if err = rows.Scan(&v.ID, &v.TargetID, &v.TargetTitle, &v.Kind, &v.Payload, &v.State, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, v)
+	}
+	return items, rows.Err()
+}
+func (s *Service) Runs(ctx context.Context, ws uuid.UUID) ([]Run, error) {
+	rows, err := s.db.Query(ctx, `SELECT id,purpose,provider,model,status,usage_json,COALESCE(error_code,''),started_at,completed_at FROM ai_runs WHERE workspace_id=$1 ORDER BY started_at DESC LIMIT 100`, ws)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Run{}
+	for rows.Next() {
+		var v Run
+		if err = rows.Scan(&v.ID, &v.Purpose, &v.Provider, &v.Model, &v.Status, &v.Usage, &v.ErrorCode, &v.StartedAt, &v.CompletedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, v)
+	}
+	return items, rows.Err()
 }
 func (s *Service) Review(ctx context.Context, ws, user, idValue uuid.UUID, state string) error {
 	if state != "accepted" && state != "rejected" {

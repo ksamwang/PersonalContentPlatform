@@ -7,10 +7,11 @@ import {
   Network,
   Search,
   Settings2,
+  Sparkles,
   Shapes,
 } from "lucide-react";
 
-export type StudioView = "content"|"inbox"|"collections"|"assets"|"knowledge"|"discover"|"settings";
+export type StudioView = "content"|"inbox"|"collections"|"assets"|"knowledge"|"ai"|"discover"|"settings";
 export function Sidebar({ onNavigate, view, publicSite, userLabel, onLogout }: { onNavigate: (view:StudioView) => void; view: StudioView; publicSite:string; userLabel:string; onLogout:()=>void }) {
   return (
     <aside className="sidebar">
@@ -36,6 +37,7 @@ export function Sidebar({ onNavigate, view, publicSite, userLabel, onLogout }: {
         </button>
         <button className={view === "assets" ? "active" : ""} onClick={()=>onNavigate("assets")}><Images aria-hidden size={19}/><span>资产</span></button>
         <button className={view === "knowledge" ? "active" : ""} onClick={()=>onNavigate("knowledge")}><Network aria-hidden size={19}/><span>知识</span></button>
+        <button className={view === "ai" ? "active" : ""} onClick={()=>onNavigate("ai")}><Sparkles aria-hidden size={19}/><span>AI 助手</span></button>
         <button className={view === "discover" ? "active" : ""} onClick={()=>onNavigate("discover")}>
           <Search aria-hidden size={19} />
           <span>发现</span>

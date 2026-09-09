@@ -21,9 +21,37 @@ func (h *HTTP) Register(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(h.auth)
 		r.Post("/v1/workspaces/{workspaceID}/ai/suggestions", h.suggest)
+		r.Get("/v1/workspaces/{workspaceID}/ai/suggestions", h.suggestions)
 		r.Post("/v1/workspaces/{workspaceID}/ai/suggestions/{suggestionID}:review", h.review)
+		r.Get("/v1/workspaces/{workspaceID}/ai/runs", h.runs)
 		r.Post("/v1/workspaces/{workspaceID}/localizations/{localizationID}:translate", h.translate)
 	})
+}
+func (h *HTTP) suggestions(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := principal(r)
+	if !ok {
+		httpx.Error(w, 403, "workspace_forbidden", "workspace access denied")
+		return
+	}
+	items, err := h.service.Suggestions(r.Context(), ws, r.URL.Query().Get("state"))
+	if err != nil {
+		httpx.Error(w, 500, "suggestions_failed", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, map[string]any{"items": items})
+}
+func (h *HTTP) runs(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := principal(r)
+	if !ok {
+		httpx.Error(w, 403, "workspace_forbidden", "workspace access denied")
+		return
+	}
+	items, err := h.service.Runs(r.Context(), ws)
+	if err != nil {
+		httpx.Error(w, 500, "ai_runs_failed", err.Error())
+		return
+	}
+	httpx.JSON(w, 200, map[string]any{"items": items})
 }
 
 type translateInput struct {
