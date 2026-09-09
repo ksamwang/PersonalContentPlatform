@@ -142,7 +142,7 @@ export function EditorPanel({
   }
   async function preview(){
     setBusy(true); if(timer.current)clearTimeout(timer.current);
-    try{const saved=await save();if(!saved)return;const token=await api.preview(workspace,localization.id);window.open(`${publicSite.replace(/\/$/,"")}/preview/${token.token}`,"_blank","noopener,noreferrer");setStatus("预览链接已生成，30 分钟内有效")}
+    try{const saved=await save();if(!saved)return;const token=await api.preview(workspace,localization.id);const previewOrigin=new URL(publicSite,window.location.origin).origin;window.open(`${previewOrigin}/preview/${token.token}`,"_blank","noopener,noreferrer");setStatus("预览链接已生成，30 分钟内有效")}
     catch(err){setStatus(err instanceof Error?err.message:"预览生成失败")}finally{setBusy(false)}
   }
   function applyRestoredDraft(next:Draft){setDraft(next);draftRef.current=next;setTitle(next.title);titleRef.current=next.title;setSummary(next.summary);summaryRef.current=next.summary;editor?.commands.setContent(next.body,{emitUpdate:false});setStatus("旧版本已恢复到草稿")}
