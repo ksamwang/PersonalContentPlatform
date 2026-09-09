@@ -13,17 +13,25 @@ import (
 type HTTP struct {
 	exports  *application.ExportService
 	webhooks *application.WebhookService
+	archives *application.ArchiveService
+	imports  *application.ImportService
 	auth     func(http.Handler) http.Handler
 }
 
 func NewHTTP(exports *application.ExportService, webhooks *application.WebhookService, auth func(http.Handler) http.Handler) *HTTP {
 	return &HTTP{exports: exports, webhooks: webhooks, auth: auth}
 }
+func (h *HTTP) WithMigration(archives *application.ArchiveService, imports *application.ImportService) *HTTP {
+	h.archives, h.imports = archives, imports
+	return h
+}
 
 func (h *HTTP) Register(router chi.Router) {
 	router.Group(func(router chi.Router) {
 		router.Use(h.auth)
 		router.With(scopeWorkspace).Get("/v1/workspaces/{workspaceID}/exports/manifest.json", h.exportManifest)
+		router.With(scopeWorkspace).Get("/v1/workspaces/{workspaceID}/exports/{format}", h.exportArchive)
+		router.With(scopeWorkspace).Post("/v1/workspaces/{workspaceID}/imports/{format}", h.importContent)
 		router.With(scopeWorkspace).Get("/v1/workspaces/{workspaceID}/webhooks", h.listWebhooks)
 		router.With(scopeWorkspace).Post("/v1/workspaces/{workspaceID}/webhooks", h.createWebhook)
 		router.With(scopeWorkspace).Patch("/v1/workspaces/{workspaceID}/webhooks/{endpointID}", h.setWebhookEnabled)

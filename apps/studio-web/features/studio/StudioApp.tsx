@@ -18,6 +18,7 @@ import { DiscoverPanel } from "./DiscoverPanel";
 import { KnowledgePanel } from "../knowledge/KnowledgePanel";
 import { AIAssistantPanel } from "../ai/AIAssistantPanel";
 import { PublicationPanel } from "../publication/PublicationPanel";
+import { MigrationPanel } from "../migration/MigrationPanel";
 export function StudioApp() {
   const [user, setUser] = useState<Principal | null | undefined>(undefined),
     [items, setItems] = useState<Content[]>([]),
@@ -95,6 +96,8 @@ export function StudioApp() {
           <DiscoverPanel workspace={user.WorkspaceID} role={user.Role} onOpen={content=>{setSelected(content);setView("content")}}/>
         ) : view === "publication" ? (
           <PublicationPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{setSelected(await api.content(user.WorkspaceID,id));setView("content")}catch(error){setLoadError(error instanceof Error?error.message:"内容加载失败")}}}/>
+        ) : view === "migration" ? (
+          <MigrationPanel workspace={user.WorkspaceID} role={user.Role}/>
         ) : (<>
         <header className="topbar">
           <div>

@@ -85,6 +85,7 @@ export type AISuggestion={id:string;target_id:string;target_title:string;kind:st
 export type AIRun={id:string;purpose:string;provider:string;model:string;status:"running"|"succeeded"|"failed";usage:{input_tokens?:number;output_tokens?:number};error_code:string;started_at:string;completed_at?:string};
 export type PublicationRecord={id:string;content_id:string;title:string;locale:string;channel:string;state:string;scheduled_at?:string;published_at?:string;attempts:number;last_error:string;created_at:string};
 export type PublicationChannel={channel:string;name:string;status:string;detail:string};
+export type ImportReport={format:string;contents:number;localizations:number;assets:number;entities:number;relations:number;conflicts:string[];renamed:string[];applied:boolean};
 export class APIError extends Error {
   constructor(
     public status: number,
@@ -273,5 +274,7 @@ export const api = {
   schedulePublication:(ws:string,value:{content_id:string;locale:string;scheduled_at:string})=>request<{publication_id:string}>(`/v1/workspaces/${ws}/publication-records:schedule`,{method:"POST",body:JSON.stringify(value)}),
   retryPublication:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/publication-records/${id}:retry`,{method:"POST"}),
   withdrawPublication:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/publication-records/${id}:withdraw`,{method:"POST"}),
+  previewImport:async(ws:string,format:string,file:File)=>{const response=await fetch(`/api/v1/workspaces/${ws}/imports/${format}`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/octet-stream"},body:file});if(!response.ok){const problem=await response.json().catch(()=>({}));throw new Error(problem.detail??"导入预检失败")};return response.json() as Promise<ImportReport>},
+  applyImport:async(ws:string,format:string,file:File)=>{const response=await fetch(`/api/v1/workspaces/${ws}/imports/${format}?mode=apply`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/octet-stream"},body:file});if(!response.ok){const problem=await response.json().catch(()=>({}));throw new Error(problem.detail??"导入失败")};return response.json() as Promise<ImportReport>},
 };
 export type SearchHit={content_id:string;title:string;summary:string;locale:string;type:string;slug:string;excerpt:string;score:number};
