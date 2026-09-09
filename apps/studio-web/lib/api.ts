@@ -54,6 +54,9 @@ export type Asset = {
   size: number;
   sha256: string;
   usage_count: number;
+  width?:number;
+  height?:number;
+  variants?:{recipe:string;width:number;height:number}[];
 };
 export type AssetUsage={id:string;owner_id:string;owner_title:string;role:string};
 export type GeneralSettings = {

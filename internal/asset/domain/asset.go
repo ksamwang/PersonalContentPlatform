@@ -26,6 +26,14 @@ type Asset struct {
 	CreatedAt        time.Time  `json:"created_at"`
 	UsageCount       int        `json:"usage_count"`
 	ArchivedAt       *time.Time `json:"archived_at,omitempty"`
+	Width            int        `json:"width,omitempty"`
+	Height           int        `json:"height,omitempty"`
+	Variants         []Variant  `json:"variants,omitempty"`
+}
+type Variant struct {
+	Recipe string `json:"recipe"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
 }
 type Usage struct {
 	ID         uuid.UUID `json:"id"`

@@ -16,4 +16,6 @@ type Repository interface {
 	Archive(context.Context, uuid.UUID, uuid.UUID) error
 	Replace(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (domain.Asset, error)
 	Object(context.Context, uuid.UUID) (domain.StoredObject, error)
+	VariantObject(context.Context, uuid.UUID, string) (domain.StoredObject, error)
+	SaveVariant(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID, string, string, string, int64, int, int, int, int) error
 }

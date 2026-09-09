@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/ksamwang/PersonalContentPlatform/internal/asset/application"
+	"github.com/ksamwang/PersonalContentPlatform/internal/asset/domain"
 	identity "github.com/ksamwang/PersonalContentPlatform/internal/identity/transport"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/httpx"
 	"io"
@@ -21,6 +22,7 @@ func NewHTTP(s *application.Service, a func(http.Handler) http.Handler) *HTTP {
 }
 func (h *HTTP) Register(r chi.Router) {
 	r.Get("/v1/public/assets/{assetID}", h.publicContent)
+	r.Get("/v1/public/assets/{assetID}/{recipe}", h.publicVariant)
 	r.Group(func(r chi.Router) {
 		r.Use(h.auth)
 		r.Route("/v1/workspaces/{workspaceID}/assets", func(r chi.Router) {
@@ -116,6 +118,22 @@ func (h *HTTP) publicContent(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, 404, "asset_not_found", "asset was not found")
 		return
 	}
+	serveObject(w, reader, object)
+}
+func (h *HTTP) publicVariant(w http.ResponseWriter, r *http.Request) {
+	assetID, err := uuid.Parse(chi.URLParam(r, "assetID"))
+	if err != nil {
+		httpx.Error(w, 404, "asset_not_found", "asset was not found")
+		return
+	}
+	reader, object, err := h.service.OpenPublicVariant(r.Context(), assetID, chi.URLParam(r, "recipe"))
+	if err != nil {
+		httpx.Error(w, 404, "asset_not_found", "asset was not found")
+		return
+	}
+	serveObject(w, reader, object)
+}
+func serveObject(w http.ResponseWriter, reader io.ReadCloser, object domain.StoredObject) {
 	defer reader.Close()
 	w.Header().Set("Content-Type", object.MIME)
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")

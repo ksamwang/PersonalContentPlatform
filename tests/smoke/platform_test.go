@@ -1,8 +1,12 @@
 package smoke_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -231,7 +235,14 @@ func TestCorePlatformWorkflows(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	image := []byte("\x89PNG\r\n\x1a\nsmoke-image-" + fixture.workspaceID.String())
+	var imageBuffer bytes.Buffer
+	picture := image.NewRGBA(image.Rect(0, 0, 2, 1))
+	picture.Set(0, 0, color.RGBA{R: 217, G: 47, B: 117, A: 255})
+	picture.Set(1, 0, color.RGBA{R: 21, G: 20, B: 22, A: 255})
+	if err := png.Encode(&imageBuffer, picture); err != nil {
+		t.Fatal(err)
+	}
+	image := imageBuffer.Bytes()
 	var plan assetdomain.UploadPlan
 	client.json(http.MethodPost, workspaceBase+"/assets:prepare-upload", map[string]any{
 		"filename": "smoke.png", "mime": "image/png", "size": len(image),
@@ -242,6 +253,9 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	fixture.blobID = asset.BlobID
 	if asset.State != "ready" || asset.SHA256 == "" {
 		t.Fatalf("unexpected asset: %#v", asset)
+	}
+	if asset.Width != 2 || asset.Height != 1 || len(asset.Variants) != 2 {
+		t.Fatalf("image variants were not created: %#v", asset)
 	}
 	if asset.StorageProfileID == nil || *asset.StorageProfileID != storage.ID {
 		t.Fatalf("asset did not retain storage profile: %#v", asset)
@@ -254,6 +268,25 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	_ = assetResponse.Body.Close()
 	if err != nil || assetResponse.StatusCode != http.StatusOK || string(served) != string(image) {
 		t.Fatalf("public asset was not served correctly: status=%d err=%v", assetResponse.StatusCode, err)
+	}
+	variantResponse, err := http.Get(client.base + "/v1/public/assets/" + asset.ID.String() + "/thumbnail")
+	if err != nil {
+		t.Fatal(err)
+	}
+	variantBody, err := io.ReadAll(variantResponse.Body)
+	_ = variantResponse.Body.Close()
+	if err != nil || variantResponse.StatusCode != http.StatusOK || len(variantBody) == 0 || variantResponse.Header.Get("Content-Type") != "image/jpeg" {
+		t.Fatalf("image variant was not served correctly: status=%d err=%v", variantResponse.StatusCode, err)
+	}
+	var usageDraft contentdomain.Draft
+	client.json(http.MethodGet, workspaceBase+"/localizations/"+localizationID.String()+"/draft", nil, &usageDraft, http.StatusOK)
+	client.json(http.MethodPut, workspaceBase+"/localizations/"+localizationID.String()+"/draft", map[string]any{"version": usageDraft.Version, "title": usageDraft.Title, "summary": usageDraft.Summary, "body": map[string]any{"type": "doc", "content": []any{map[string]any{"type": "image", "attrs": map[string]any{"src": "/media/" + asset.ID.String(), "alt": "Smoke"}}}}, "metadata": map[string]any{"cover_asset_id": asset.ID.String()}}, &usageDraft, http.StatusOK)
+	var usages struct {
+		Items []assetdomain.Usage `json:"items"`
+	}
+	client.json(http.MethodGet, workspaceBase+"/assets/"+asset.ID.String()+"/usages", nil, &usages, http.StatusOK)
+	if len(usages.Items) != 1 || usages.Items[0].Role != "cover" {
+		t.Fatalf("asset usage was not synchronized: %#v", usages.Items)
 	}
 	var switchedStorage settingsdomain.StorageProfile
 	client.json(http.MethodPut, workspaceBase+"/settings/storage", map[string]any{"id": storage.ID, "name": "Smoke Files Next", "provider": "filesystem", "base_path": "next"}, &switchedStorage, http.StatusOK)

@@ -14,6 +14,7 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/content/domain"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/id"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/outbox"
+	"strings"
 	"time"
 )
 
@@ -286,12 +287,102 @@ func aggregateContents(items []domain.Content) []domain.Content {
 }
 
 func (r *Repository) SaveDraft(ctx context.Context, workspaceID, userID, localizationID uuid.UUID, expected int, title, summary string, body, metadata json.RawMessage) (domain.Draft, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return domain.Draft{}, err
+	}
+	defer tx.Rollback(ctx)
 	var d domain.Draft
-	err := r.db.QueryRow(ctx, `UPDATE draft_buffers SET version=version+1,title=$1,summary=$2,body_json=$3,metadata_json=$4,updated_by=$5,updated_at=now() WHERE localization_id=$6 AND workspace_id=$7 AND version=$8 RETURNING localization_id,version,title,summary,body_json,metadata_json,updated_at`, title, summary, body, metadata, userID, localizationID, workspaceID, expected).Scan(&d.LocalizationID, &d.Version, &d.Title, &d.Summary, &d.Body, &d.Metadata, &d.UpdatedAt)
+	err = tx.QueryRow(ctx, `UPDATE draft_buffers SET version=version+1,title=$1,summary=$2,body_json=$3,metadata_json=$4,updated_by=$5,updated_at=now() WHERE localization_id=$6 AND workspace_id=$7 AND version=$8 RETURNING localization_id,version,title,summary,body_json,metadata_json,updated_at`, title, summary, body, metadata, userID, localizationID, workspaceID, expected).Scan(&d.LocalizationID, &d.Version, &d.Title, &d.Summary, &d.Body, &d.Metadata, &d.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return d, application.ErrConflict
 	}
-	return d, err
+	if err != nil {
+		return d, err
+	}
+	var contentID uuid.UUID
+	if err = tx.QueryRow(ctx, `SELECT content_id FROM content_localizations WHERE workspace_id=$1 AND id=$2`, workspaceID, localizationID).Scan(&contentID); err != nil {
+		return d, err
+	}
+	if err = syncAssetUsages(ctx, tx, workspaceID, contentID); err != nil {
+		return d, err
+	}
+	return d, tx.Commit(ctx)
+}
+
+func syncAssetUsages(ctx context.Context, tx pgx.Tx, workspaceID, contentID uuid.UUID) error {
+	rows, err := tx.Query(ctx, `SELECT d.body_json,d.metadata_json FROM draft_buffers d JOIN content_localizations l ON l.id=d.localization_id WHERE l.workspace_id=$1 AND l.content_id=$2 AND l.deleted_at IS NULL`, workspaceID, contentID)
+	if err != nil {
+		return err
+	}
+	assets := map[uuid.UUID]string{}
+	for rows.Next() {
+		var body, metadata []byte
+		if err = rows.Scan(&body, &metadata); err != nil {
+			rows.Close()
+			return err
+		}
+		collectAssetIDs(body, "body", assets)
+		collectAssetIDs(metadata, "cover", assets)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM asset_usages WHERE workspace_id=$1 AND owner_object_id=$2`, workspaceID, contentID); err != nil {
+		return err
+	}
+	for assetID, role := range assets {
+		_, err = tx.Exec(ctx, `INSERT INTO asset_usages(id,workspace_id,asset_id,owner_object_id,role,locator_json) SELECT $1,$2,a.object_id,$3,$4,'{}'::jsonb FROM assets a WHERE a.workspace_id=$2 AND a.object_id=$5 AND a.archived_at IS NULL`, id.New(), workspaceID, contentID, role, assetID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func collectAssetIDs(raw []byte, role string, result map[uuid.UUID]string) {
+	var value any
+	if json.Unmarshal(raw, &value) != nil {
+		return
+	}
+	var visit func(any)
+	visit = func(current any) {
+		switch node := current.(type) {
+		case map[string]any:
+			if role == "cover" {
+				if rawID, ok := node["cover_asset_id"].(string); ok {
+					if assetID, err := uuid.Parse(rawID); err == nil {
+						result[assetID] = "cover"
+					}
+				}
+			}
+			if node["type"] == "image" || node["type"] == "asset" {
+				if attrs, ok := node["attrs"].(map[string]any); ok {
+					rawID, _ := attrs["assetId"].(string)
+					if rawID == "" {
+						if src, ok := attrs["src"].(string); ok {
+							rawID = strings.TrimPrefix(src, "/media/")
+							rawID = strings.SplitN(rawID, "/", 2)[0]
+						}
+					}
+					if assetID, err := uuid.Parse(rawID); err == nil {
+						if result[assetID] != "cover" {
+							result[assetID] = "body"
+						}
+					}
+				}
+			}
+			for _, child := range node {
+				visit(child)
+			}
+		case []any:
+			for _, child := range node {
+				visit(child)
+			}
+		}
+	}
+	visit(value)
 }
 func (r *Repository) SealRevision(ctx context.Context, workspaceID, userID, localizationID uuid.UUID, expected int) (domain.Revision, error) {
 	tx, err := r.db.Begin(ctx)

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -55,7 +56,7 @@ func (r *Repository) Complete(ctx context.Context, v domain.UploadIntent, userID
 	return domain.Asset{ID: assetID, WorkspaceID: v.WorkspaceID, BlobID: blobID, StorageProfileID: v.StorageProfileID, Filename: v.Filename, MediaType: mediaType, State: "ready", MIME: v.MIME, Size: size, SHA256: sha}, nil
 }
 func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, limit int) ([]domain.Asset, error) {
-	rows, err := r.db.Query(ctx, `SELECT a.object_id,a.workspace_id,a.blob_id,b.storage_profile_id,a.filename,a.media_type,a.state,b.mime,b.size,b.sha256,a.created_at,(SELECT count(*) FROM asset_usages u WHERE u.asset_id=a.object_id),a.archived_at FROM assets a JOIN blobs b ON b.id=a.blob_id WHERE a.workspace_id=$1 AND a.archived_at IS NULL ORDER BY a.created_at DESC LIMIT $2`, workspaceID, limit)
+	rows, err := r.db.Query(ctx, `SELECT a.object_id,a.workspace_id,a.blob_id,b.storage_profile_id,a.filename,a.media_type,a.state,b.mime,b.size,b.sha256,a.created_at,(SELECT count(*) FROM asset_usages u WHERE u.asset_id=a.object_id),a.archived_at,COALESCE((a.metadata_json->>'width')::int,0),COALESCE((a.metadata_json->>'height')::int,0),COALESCE((SELECT jsonb_agg(jsonb_build_object('recipe',v.recipe,'width',v.width,'height',v.height) ORDER BY v.recipe) FROM asset_variants v WHERE v.asset_id=a.object_id),'[]'::jsonb) FROM assets a JOIN blobs b ON b.id=a.blob_id WHERE a.workspace_id=$1 AND a.archived_at IS NULL ORDER BY a.created_at DESC LIMIT $2`, workspaceID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -63,16 +64,20 @@ func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, limit int)
 	items := []domain.Asset{}
 	for rows.Next() {
 		var a domain.Asset
-		if err = rows.Scan(&a.ID, &a.WorkspaceID, &a.BlobID, &a.StorageProfileID, &a.Filename, &a.MediaType, &a.State, &a.MIME, &a.Size, &a.SHA256, &a.CreatedAt, &a.UsageCount, &a.ArchivedAt); err != nil {
+		var variants []byte
+		if err = rows.Scan(&a.ID, &a.WorkspaceID, &a.BlobID, &a.StorageProfileID, &a.Filename, &a.MediaType, &a.State, &a.MIME, &a.Size, &a.SHA256, &a.CreatedAt, &a.UsageCount, &a.ArchivedAt, &a.Width, &a.Height, &variants); err != nil {
 			return nil, err
 		}
+		_ = json.Unmarshal(variants, &a.Variants)
 		items = append(items, a)
 	}
 	return items, rows.Err()
 }
 func (r *Repository) Get(ctx context.Context, workspaceID, assetID uuid.UUID) (domain.Asset, error) {
 	var a domain.Asset
-	err := r.db.QueryRow(ctx, `SELECT a.object_id,a.workspace_id,a.blob_id,b.storage_profile_id,a.filename,a.media_type,a.state,b.mime,b.size,b.sha256,a.created_at,(SELECT count(*) FROM asset_usages u WHERE u.asset_id=a.object_id),a.archived_at FROM assets a JOIN blobs b ON b.id=a.blob_id WHERE a.workspace_id=$1 AND a.object_id=$2 AND a.archived_at IS NULL`, workspaceID, assetID).Scan(&a.ID, &a.WorkspaceID, &a.BlobID, &a.StorageProfileID, &a.Filename, &a.MediaType, &a.State, &a.MIME, &a.Size, &a.SHA256, &a.CreatedAt, &a.UsageCount, &a.ArchivedAt)
+	var variants []byte
+	err := r.db.QueryRow(ctx, `SELECT a.object_id,a.workspace_id,a.blob_id,b.storage_profile_id,a.filename,a.media_type,a.state,b.mime,b.size,b.sha256,a.created_at,(SELECT count(*) FROM asset_usages u WHERE u.asset_id=a.object_id),a.archived_at,COALESCE((a.metadata_json->>'width')::int,0),COALESCE((a.metadata_json->>'height')::int,0),COALESCE((SELECT jsonb_agg(jsonb_build_object('recipe',v.recipe,'width',v.width,'height',v.height) ORDER BY v.recipe) FROM asset_variants v WHERE v.asset_id=a.object_id),'[]'::jsonb) FROM assets a JOIN blobs b ON b.id=a.blob_id WHERE a.workspace_id=$1 AND a.object_id=$2 AND a.archived_at IS NULL`, workspaceID, assetID).Scan(&a.ID, &a.WorkspaceID, &a.BlobID, &a.StorageProfileID, &a.Filename, &a.MediaType, &a.State, &a.MIME, &a.Size, &a.SHA256, &a.CreatedAt, &a.UsageCount, &a.ArchivedAt, &a.Width, &a.Height, &variants)
+	_ = json.Unmarshal(variants, &a.Variants)
 	return a, err
 }
 func (r *Repository) Usages(ctx context.Context, workspaceID, assetID uuid.UUID) ([]domain.Usage, error) {
@@ -114,6 +119,12 @@ func (r *Repository) Replace(ctx context.Context, workspaceID, assetID, replacem
 	if _, err = tx.Exec(ctx, `UPDATE assets SET archived_at=now(),updated_at=now() WHERE workspace_id=$1 AND object_id=$2`, workspaceID, replacementID); err != nil {
 		return domain.Asset{}, err
 	}
+	if _, err = tx.Exec(ctx, `DELETE FROM asset_variants WHERE asset_id=$1`, assetID); err != nil {
+		return domain.Asset{}, err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE asset_variants SET asset_id=$1,workspace_id=$2 WHERE asset_id=$3`, assetID, workspaceID, replacementID); err != nil {
+		return domain.Asset{}, err
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return domain.Asset{}, err
 	}
@@ -123,4 +134,27 @@ func (r *Repository) Object(ctx context.Context, assetID uuid.UUID) (domain.Stor
 	var value domain.StoredObject
 	err := r.db.QueryRow(ctx, `SELECT a.workspace_id,b.storage_profile_id,b.storage_key,b.mime,b.size FROM assets a JOIN blobs b ON b.id=a.blob_id WHERE a.object_id=$1 AND a.state='ready' AND a.archived_at IS NULL`, assetID).Scan(&value.WorkspaceID, &value.StorageProfileID, &value.StorageKey, &value.MIME, &value.Size)
 	return value, err
+}
+func (r *Repository) VariantObject(ctx context.Context, assetID uuid.UUID, recipe string) (domain.StoredObject, error) {
+	var value domain.StoredObject
+	err := r.db.QueryRow(ctx, `SELECT a.workspace_id,b.storage_profile_id,b.storage_key,b.mime,b.size FROM asset_variants v JOIN assets a ON a.object_id=v.asset_id JOIN blobs b ON b.id=v.blob_id WHERE v.asset_id=$1 AND v.recipe=$2 AND a.archived_at IS NULL`, assetID, recipe).Scan(&value.WorkspaceID, &value.StorageProfileID, &value.StorageKey, &value.MIME, &value.Size)
+	return value, err
+}
+func (r *Repository) SaveVariant(ctx context.Context, workspaceID, assetID uuid.UUID, profileID *uuid.UUID, recipe, key, sha string, size int64, width, height, originalWidth, originalHeight int) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	blobID := id.New()
+	if err = tx.QueryRow(ctx, `INSERT INTO blobs(id,sha256,size,storage_key,mime,storage_profile_id) VALUES($1,$2,$3,$4,'image/jpeg',$5) ON CONFLICT(sha256,size) DO UPDATE SET sha256=EXCLUDED.sha256 RETURNING id`, blobID, sha, size, key, profileID).Scan(&blobID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO asset_variants(id,workspace_id,asset_id,recipe,blob_id,width,height) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(asset_id,recipe) DO UPDATE SET blob_id=EXCLUDED.blob_id,width=EXCLUDED.width,height=EXCLUDED.height`, id.New(), workspaceID, assetID, recipe, blobID, width, height); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE assets SET metadata_json=metadata_json||jsonb_build_object('width',$1::int,'height',$2::int),updated_at=now() WHERE workspace_id=$3 AND object_id=$4`, originalWidth, originalHeight, workspaceID, assetID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

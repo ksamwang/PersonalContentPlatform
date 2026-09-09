@@ -133,6 +133,9 @@ func renderNode(out *bytes.Buffer, n Node) {
 		out.WriteString("<br>")
 	case "image":
 		if src := safeURL(n.Attrs["src"]); src != "" {
+			if strings.HasPrefix(src, "/media/") && strings.Count(src, "/") == 2 {
+				src += "/content-1280"
+			}
 			out.WriteString(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(stringAttr(n.Attrs["alt"])) + `">`)
 		}
 	case "table":

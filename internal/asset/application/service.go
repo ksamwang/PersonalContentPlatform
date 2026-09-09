@@ -94,7 +94,12 @@ func (s *Service) Complete(ctx context.Context, workspaceID, userID, intentID uu
 	if _, err = io.Copy(hash, reader); err != nil {
 		return domain.Asset{}, err
 	}
-	return s.repo.Complete(ctx, intent, userID, hex.EncodeToString(hash.Sum(nil)), info.Size)
+	asset, err := s.repo.Complete(ctx, intent, userID, hex.EncodeToString(hash.Sum(nil)), info.Size)
+	if err != nil {
+		return domain.Asset{}, err
+	}
+	_ = s.deriveImages(ctx, intent, asset)
+	return s.repo.Get(ctx, workspaceID, asset.ID)
 }
 func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, limit int) ([]domain.Asset, error) {
 	if limit < 1 || limit > 100 {
@@ -121,6 +126,18 @@ func (s *Service) OpenPublic(ctx context.Context, assetID uuid.UUID) (io.ReadClo
 	object, err := s.repo.Object(ctx, assetID)
 	if err != nil {
 		return nil, domain.StoredObject{}, err
+	}
+	storage, _, err := s.storage.Resolve(ctx, object.WorkspaceID, object.StorageProfileID)
+	if err != nil {
+		return nil, domain.StoredObject{}, err
+	}
+	reader, err := storage.Open(ctx, object.StorageKey)
+	return reader, object, err
+}
+func (s *Service) OpenPublicVariant(ctx context.Context, assetID uuid.UUID, recipe string) (io.ReadCloser, domain.StoredObject, error) {
+	object, err := s.repo.VariantObject(ctx, assetID, recipe)
+	if err != nil {
+		return s.OpenPublic(ctx, assetID)
 	}
 	storage, _, err := s.storage.Resolve(ctx, object.WorkspaceID, object.StorageProfileID)
 	if err != nil {
