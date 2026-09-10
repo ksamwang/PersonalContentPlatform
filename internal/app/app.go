@@ -32,6 +32,7 @@ import (
 	knowledgehttp "github.com/ksamwang/PersonalContentPlatform/internal/knowledge/transport"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/health"
+	"github.com/ksamwang/PersonalContentPlatform/internal/platform/httpx"
 	publicationapp "github.com/ksamwang/PersonalContentPlatform/internal/publication/application"
 	publicationhttp "github.com/ksamwang/PersonalContentPlatform/internal/publication/transport"
 	retrievalapp "github.com/ksamwang/PersonalContentPlatform/internal/retrieval/application"
@@ -107,7 +108,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 }
 func (a *App) Router() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(middleware.RequestID, httpx.AccessLog, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	health.RegisterRoutes(r, a.DB)
 	a.identity.Register(r)
 	a.content.Register(r)

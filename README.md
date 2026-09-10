@@ -57,11 +57,12 @@ go test ./tests/smoke -run TestCorePlatformWorkflows -v -count=1
 - Workspace 设置可在 Studio 中管理站点、语言、登录、发布、Filesystem/S3/R2/阿里 OSS 与 OpenAI 兼容 Provider；部署级参数保留在 `.env`。
 - Article、Note、Page 采用不可变 Revision，`zh-CN` 与 `en` 独立维护并发布到 Website/RSS。
 - 资产存储可选 `filesystem`、`s3`、`r2`、`oss`，统一通过 Storage Port 使用。
-- AI 接入 OpenAI-compatible API，输出只生成可审查的 Suggestion，不直接覆盖内容事实。
+- AI 接入 OpenAI-compatible API，输出先生成可审查的 Suggestion；用户接受后才写入草稿或知识关系。
+- Inbox 智能处理与 AI 建议由 Worker 执行，Studio 会跟踪任务状态；API 和 Worker 必须同时运行。
 - Workspace manifest 导出包含全部修订、草稿、资产 hash、知识关系和发布记录。
 - Webhook 使用 Outbox 事件、HMAC-SHA256 签名、有限重试和投递审计。
 
-Webhook 的 `secret_ref` 保存环境变量名，不保存密钥本身。例如配置 `PCP_WEBHOOK_SECRET_PRIMARY` 后，创建端点时将 `secret_ref` 设为该名称。可用 API：
+Webhook 密钥按已确认方案明文保存在 Workspace 数据库配置中，API 只返回掩码，不返回密钥正文；旧数据中的 `secret_ref` 仍可兼容读取。可用 API：
 
 ```text
 GET    /v1/workspaces/{workspaceID}/webhooks

@@ -20,6 +20,10 @@ Compose 启动前创建以下未纳入 Git 的文件：
 - Cloudflare R2：`OBJECT_STORAGE_PROVIDER=r2`，同时配置 endpoint、bucket 和密钥。
 - 阿里云 OSS：`OBJECT_STORAGE_PROVIDER=oss`，endpoint 填 OSS 地域地址，region、bucket 和密钥按对应账号配置。
 
-Webhook 密钥不进入数据库。服务端环境中配置密钥变量，端点的 `secret_ref` 只记录变量名。
+Webhook 密钥按项目约定明文保存在数据库中，备份和数据库运维权限应按包含密钥的数据管理。API 不返回密钥正文，旧 `secret_ref` 配置仍兼容。
+
+公开站缓存默认保存 5 分钟。API 与 Worker 使用 `PUBLIC_WEB_ORIGIN` 通知公开站即时失效缓存；Docker Compose 已指向 `http://public-web:3000`。生产环境应在根目录 `.env` 为 API、Worker和 Public Web 设置相同的 `PUBLIC_REVALIDATE_TOKEN`。
+
+Worker 同时负责发布、全文及向量索引、Inbox 智能处理、AI 建议和 Webhook 投递，生产环境不要只启动 API。
 
 非容器部署使用 `deploy/systemd` 中的服务单元。上线、备份恢复和故障处理详见 `docs/runbooks`。
