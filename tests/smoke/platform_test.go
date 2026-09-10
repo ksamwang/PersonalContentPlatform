@@ -349,9 +349,25 @@ func TestCorePlatformWorkflows(t *testing.T) {
 	if _, err := fixture.db.Exec(t.Context(), `DELETE FROM ai_provider_configs WHERE workspace_id=$1`, fixture.workspaceID); err != nil {
 		t.Fatal(err)
 	}
+	var queuedTask struct {
+		JobID uuid.UUID `json:"job_id"`
+		State string    `json:"state"`
+	}
 	client.json(http.MethodPost, workspaceBase+"/ai/suggestions", map[string]any{
 		"target_id": content.ID, "purpose": "summary", "input": "Smoke body",
-	}, nil, http.StatusServiceUnavailable)
+	}, &queuedTask, http.StatusAccepted)
+	if queuedTask.JobID == uuid.Nil || queuedTask.State != "pending" {
+		t.Fatalf("AI suggestion was not queued: %#v", queuedTask)
+	}
+	var taskStatus struct {
+		ID    uuid.UUID `json:"id"`
+		Type  string    `json:"type"`
+		State string    `json:"state"`
+	}
+	client.json(http.MethodGet, workspaceBase+"/tasks/"+queuedTask.JobID.String(), nil, &taskStatus, http.StatusOK)
+	if taskStatus.ID != queuedTask.JobID || taskStatus.Type != "ai.suggest" || taskStatus.State != "pending" {
+		t.Fatalf("unexpected queued AI task: %#v", taskStatus)
+	}
 
 	var passkeyOptions map[string]any
 	client.json(http.MethodPost, "/v1/auth/passkeys/register/options", map[string]any{}, &passkeyOptions, http.StatusOK)
