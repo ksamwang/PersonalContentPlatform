@@ -1,0 +1,235 @@
+/* Public discovery surfaces: home, search, tags and collections. */
+.site-header {
+  height: 80px;
+  position: relative;
+  z-index: 20;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+}
+
+.site-header nav a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.site-header nav a:not(.icon-link)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 7px;
+  left: 0;
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 180ms ease-out;
+}
+
+.site-header nav a:hover::after,
+.site-header nav a:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.hero {
+  min-height: 54dvh;
+  padding-top: clamp(64px, 8vw, 112px);
+  padding-bottom: clamp(64px, 8vw, 112px);
+}
+
+.hero-content {
+  width: min(1160px, 100%);
+  position: relative;
+  z-index: 1;
+}
+
+.hero h1 {
+  font-size: clamp(3.25rem, 6.6vw, 7.25rem);
+  margin: 22px 0;
+}
+
+.hero p {
+  margin: 0;
+}
+
+.hero::after {
+  top: 10%;
+  opacity: 0.46;
+}
+
+.index {
+  padding-top: clamp(54px, 6vw, 80px);
+  padding-bottom: clamp(64px, 7vw, 96px);
+}
+
+.section-heading {
+  min-height: 62px;
+}
+
+.section-heading h2 {
+  margin: 14px 0;
+}
+
+.publication-index > a {
+  grid-template-columns: 120px 78px minmax(220px, 1fr) 44px;
+  min-height: 122px;
+  padding: 10px 12px;
+  margin-inline: -12px;
+  transition: background-color 180ms ease-out;
+}
+
+.publication-index > a:hover,
+.publication-index > a:focus-visible {
+  background: color-mix(in srgb, var(--ink) 3.5%, transparent);
+}
+
+.publication-index picture,
+.cover-placeholder {
+  width: 120px;
+  border-radius: 2px;
+}
+
+.publication-index strong {
+  font-size: clamp(1.35rem, 2vw, 1.72rem);
+  line-height: 1.18;
+}
+
+.publication-index p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.publication-index > a.without-cover {
+  grid-template-columns: 78px minmax(220px, 1fr) 44px;
+}
+
+.discover-sections {
+  gap: clamp(40px, 6vw, 80px);
+  padding-bottom: clamp(72px, 8vw, 112px);
+}
+
+.collection-links a,
+.public-collections a {
+  transition: color 180ms ease-out, padding 180ms ease-out;
+}
+
+.collection-links a:hover,
+.public-collections a:hover {
+  color: var(--accent);
+  padding-left: 8px;
+}
+
+.search-page,
+.collection-page {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding-top: clamp(52px, 6vw, 88px);
+}
+
+.search-page > header,
+.collection-page > header {
+  max-width: 860px;
+}
+
+.search-page > header h1,
+.collection-page > header h1 {
+  font-size: clamp(3rem, 6vw, 5.25rem);
+}
+
+.public-search {
+  margin-top: 36px;
+}
+
+.tag-cloud {
+  padding-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .site-header {
+    min-height: 116px;
+    padding: 14px 20px 8px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .wordmark {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .site-header nav {
+    width: 100%;
+    max-width: none;
+    margin-top: -4px;
+    gap: 4px 12px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .site-header nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-header nav > a:not(.icon-link):not(.collections-link) {
+    display: inline-flex;
+  }
+
+  .site-header nav a {
+    flex: 0 0 auto;
+    padding-inline: 7px;
+  }
+
+  .hero {
+    min-height: auto;
+    padding-top: 58px;
+    padding-bottom: 64px;
+  }
+
+  .hero h1 {
+    font-size: clamp(3rem, 14vw, 4.6rem);
+  }
+
+  .hero::after {
+    right: -70px;
+  }
+
+  .publication-index > a {
+    grid-template-columns: 88px minmax(0, 1fr) 36px;
+    gap: 14px;
+    margin-inline: 0;
+    padding: 22px 0;
+  }
+
+  .publication-index picture,
+  .cover-placeholder {
+    width: 88px;
+  }
+
+  .publication-index svg {
+    width: 18px;
+  }
+
+  .publication-index > a.without-cover {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+}
+
+@media (max-width: 430px) {
+  .site-header nav {
+    gap: 2px 7px;
+  }
+
+  .site-header nav a {
+    font-size: 0.8rem;
+  }
+
+  .publication-index p {
+    -webkit-line-clamp: 1;
+  }
+}
