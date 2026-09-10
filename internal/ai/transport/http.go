@@ -6,13 +6,17 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/ai/application"
 	identity "github.com/ksamwang/PersonalContentPlatform/internal/identity/transport"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/httpx"
+	taskapp "github.com/ksamwang/PersonalContentPlatform/internal/task/application"
 	"net/http"
 )
 
 type HTTP struct {
 	service *application.Service
 	auth    func(http.Handler) http.Handler
+	queue   *taskapp.Queue
 }
+
+func (h *HTTP) WithQueue(queue *taskapp.Queue) *HTTP { h.queue = queue; return h }
 
 func NewHTTP(s *application.Service, a func(http.Handler) http.Handler) *HTTP {
 	return &HTTP{service: s, auth: a}
@@ -104,6 +108,15 @@ func (h *HTTP) suggest(w http.ResponseWriter, r *http.Request) {
 	var in suggestInput
 	if err := httpx.Decode(w, r, &in); err != nil {
 		httpx.Error(w, 400, "invalid_request", err.Error())
+		return
+	}
+	if h.queue != nil {
+		jobID, err := h.queue.Enqueue(r.Context(), ws, "ai.suggest", map[string]any{"user_id": user, "target_id": in.TargetID, "localization_id": in.LocalizationID, "purpose": in.Purpose, "input": in.Input})
+		if err != nil {
+			httpx.Error(w, 500, "task_enqueue_failed", err.Error())
+			return
+		}
+		httpx.JSON(w, http.StatusAccepted, map[string]any{"job_id": jobID, "state": "pending"})
 		return
 	}
 	idValue, err := h.service.Suggest(r.Context(), ws, user, in.TargetID, in.LocalizationID, in.Purpose, in.Input)

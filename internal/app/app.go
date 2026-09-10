@@ -39,6 +39,8 @@ import (
 	settingsapp "github.com/ksamwang/PersonalContentPlatform/internal/settings/application"
 	settingspg "github.com/ksamwang/PersonalContentPlatform/internal/settings/infrastructure/postgres"
 	settingshttp "github.com/ksamwang/PersonalContentPlatform/internal/settings/transport"
+	taskapp "github.com/ksamwang/PersonalContentPlatform/internal/task/application"
+	taskhttp "github.com/ksamwang/PersonalContentPlatform/internal/task/transport"
 	"net/http"
 	"time"
 )
@@ -58,6 +60,7 @@ type App struct {
 	inbox            *inboxhttp.HTTP
 	collection       *collectionhttp.HTTP
 	retrieval        *retrievalhttp.HTTP
+	task             *taskhttp.HTTP
 }
 
 func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
@@ -78,6 +81,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 	assetService := assetapp.New(assetpg.New(db), storage)
 	knowledgeService := knowledgeapp.New(knowledgepg.New(db))
 	aiService := aiapp.New(db, openai.NewResolver(settingsRepository, openai.New(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)))
+	taskQueue := taskapp.NewQueue(db)
 	integrationRepository := integrationpg.New(db)
 	return &App{
 		DB:               db,
@@ -88,15 +92,16 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 		publicationAdmin: publicationhttp.NewAdminHTTP(publicationapp.NewService(db), identityTransport.RequireSession),
 		asset:            assethttp.NewHTTP(assetService, identityTransport.RequireSession),
 		knowledge:        knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession),
-		ai:               aihttp.NewHTTP(aiService, identityTransport.RequireSession),
+		ai:               aihttp.NewHTTP(aiService, identityTransport.RequireSession).WithQueue(taskQueue),
 		integration: func() *integrationhttp.HTTP {
 			exports := integrationapp.NewExportService(integrationRepository)
 			return integrationhttp.NewHTTP(exports, integrationapp.NewWebhookService(integrationRepository), identityTransport.RequireSession).WithMigration(integrationapp.NewArchiveService(exports, assetService), integrationapp.NewImportService(db, assetService))
 		}(),
 		settings:   settingshttp.NewHTTP(settingsapp.New(settingsRepository, cfg.StorageBasePath), identityTransport.RequireSession),
-		inbox:      inboxhttp.NewHTTP(inboxapp.New(inboxpg.New(db), cfg.SupportedLocales, settingsRepository, assetService), identityTransport.RequireSession),
+		inbox:      inboxhttp.NewHTTP(inboxapp.New(inboxpg.New(db), cfg.SupportedLocales, settingsRepository, assetService), identityTransport.RequireSession).WithQueue(taskQueue),
 		collection: collectionhttp.NewHTTP(collectionapp.New(collectionpg.New(db)), identityTransport.RequireSession),
 		retrieval:  retrievalhttp.NewHTTP(retrievalapp.New(db, settingsRepository), identityTransport.RequireSession),
+		task:       taskhttp.NewHTTP(taskQueue, identityTransport.RequireSession),
 	}, nil
 }
 func (a *App) Router() http.Handler {
@@ -115,5 +120,8 @@ func (a *App) Router() http.Handler {
 	a.inbox.Register(r)
 	a.collection.Register(r)
 	a.retrieval.Register(r)
+	if a.task != nil {
+		a.task.Register(r)
+	}
 	return r
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Archive, FileText, Inbox as InboxIcon, Link2, LoaderCircle, NotebookPen, Sparkles } from "lucide-react";
-import { api, InboxItem } from "../../lib/api";
+import { api, InboxItem, waitForTask } from "../../lib/api";
 import { CaptureForm } from "./CaptureForm";
 import { ConvertDialog } from "./ConvertDialog";
 
@@ -10,7 +10,7 @@ export function InboxPanel({workspace,role,onOpenContent}:{workspace:string;role
   const load=useCallback(async()=>{setLoading(true);setError("");try{setItems((await api.inbox(workspace,state)).items)}catch(err){setError(err instanceof Error?err.message:"收件箱加载失败")}finally{setLoading(false)}},[workspace,state]);
   useEffect(()=>{void load()},[load]);
   async function archive(item:InboxItem){if(!window.confirm("确认归档这条收集内容？归档后不会出现在待整理列表。"))return;try{await api.archiveInbox(workspace,item.id);await load()}catch(err){setError(err instanceof Error?err.message:"归档失败")}}
-  async function process(item:InboxItem){setItems(v=>v.map(candidate=>candidate.id===item.id?{...candidate,processing_state:"processing"}:candidate));try{const saved=await api.processInbox(workspace,item.id);setItems(v=>v.map(candidate=>candidate.id===saved.id?saved:candidate))}catch(err){setError(err instanceof Error?err.message:"自动处理失败");await load()}}
+  async function process(item:InboxItem){setItems(v=>v.map(candidate=>candidate.id===item.id?{...candidate,processing_state:"processing"}:candidate));try{const queued=await api.processInbox(workspace,item.id);await waitForTask(workspace,queued.job_id);await load()}catch(err){setError(err instanceof Error?err.message:"自动处理失败");await load()}}
   return <section className="inbox-page">
     <header className="page-heading"><div><span className="eyebrow">INBOX</span><h1>收件箱</h1><p>快速捕获零散想法和链接，再把值得保留的内容整理成草稿。</p></div><label className="state-filter"><span>显示状态</span><select value={state} onChange={e=>setState(e.target.value)}><option value="pending">待整理</option><option value="converted">已转换</option><option value="archived">已归档</option></select></label></header>
     {canEdit&&<CaptureForm workspace={workspace} onCaptured={item=>{if(state==="pending")setItems(v=>[item,...v])}}/>}

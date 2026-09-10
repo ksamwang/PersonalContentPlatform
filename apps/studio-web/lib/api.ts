@@ -83,6 +83,7 @@ export type KnowledgeRelation={id:string;source_id:string;target_id:string;predi
 export type KnowledgeMention={id:string;revision_id:string;entity_id:string;entity_name:string;content_id:string;content_title:string;locale:string;confidence:number;confirmed:boolean;created_at:string};
 export type AISuggestion={id:string;target_id:string;target_title:string;kind:string;payload:{text?:string};state:"pending"|"accepted"|"rejected";created_at:string};
 export type AIApplyResult={applied:string[];draft_version?:number};
+export type BackgroundTask={id:string;type:string;state:"pending"|"running"|"retry_wait"|"succeeded"|"dead";attempts:number;last_error:string;result?:string;updated_at:string};
 export type AIRun={id:string;purpose:string;provider:string;model:string;status:"running"|"succeeded"|"failed";usage:{input_tokens?:number;output_tokens?:number};error_code:string;started_at:string;completed_at?:string};
 export type PublicationRecord={id:string;content_id:string;title:string;locale:string;channel:string;state:string;scheduled_at?:string;published_at?:string;attempts:number;last_error:string;created_at:string};
 export type PublicationChannel={channel:string;name:string;status:string;detail:string};
@@ -234,7 +235,7 @@ export const api = {
   inbox: (ws:string,state="pending") => requestItems<InboxItem>(`/v1/workspaces/${ws}/inbox/?state=${encodeURIComponent(state)}`),
   saveMedia:(ws:string,purpose:string,value:MediaSettings&{api_key?:string})=>request<MediaSettings>(`/v1/workspaces/${ws}/settings/media/${purpose}`,{method:"PUT",body:JSON.stringify(value)}),
   captureInbox: (ws:string,value:{kind:InboxItem["kind"];raw_text:string;source_url?:string;asset_id?:string}) => request<InboxItem>(`/v1/workspaces/${ws}/inbox/`,{method:"POST",body:JSON.stringify(value)}),
-  processInbox:(ws:string,id:string)=>request<InboxItem>(`/v1/workspaces/${ws}/inbox/${id}:process`,{method:"POST"}),
+  processInbox:(ws:string,id:string)=>request<{job_id:string;state:string}>(`/v1/workspaces/${ws}/inbox/${id}:process`,{method:"POST"}),
   archiveInbox: (ws:string,id:string) => request<void>(`/v1/workspaces/${ws}/inbox/${id}:archive`,{method:"POST"}),
   convertInbox: (ws:string,id:string,value:{type:Content["type"];locale:string;slug:string;title:string}) => request<InboxConversion>(`/v1/workspaces/${ws}/inbox/${id}:convert`,{method:"POST",body:JSON.stringify(value)}),
   collections: (ws:string) => requestItems<Collection>(`/v1/workspaces/${ws}/collections`),
@@ -263,10 +264,11 @@ export const api = {
   knowledgeMentions:(ws:string)=>requestItems<KnowledgeMention>(`/v1/workspaces/${ws}/knowledge/mentions`),
   extractKnowledgeMentions:(ws:string)=>requestItems<KnowledgeMention>(`/v1/workspaces/${ws}/knowledge/mentions:extract`,{method:"POST"}),
   confirmKnowledgeMention:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/knowledge/mentions/${id}:confirm`,{method:"POST"}),
-  aiSuggest:(ws:string,value:{target_id:string;localization_id:string;purpose:string;input:string})=>request<{suggestion_id:string;state:string}>(`/v1/workspaces/${ws}/ai/suggestions`,{method:"POST",body:JSON.stringify(value)}),
+  aiSuggest:(ws:string,value:{target_id:string;localization_id:string;purpose:string;input:string})=>request<{job_id:string;state:string}>(`/v1/workspaces/${ws}/ai/suggestions`,{method:"POST",body:JSON.stringify(value)}),
   aiSuggestions:(ws:string,state="")=>requestItems<AISuggestion>(`/v1/workspaces/${ws}/ai/suggestions${state?`?state=${state}`:""}`),
   reviewAISuggestion:(ws:string,id:string,state:"accepted"|"rejected")=>request<AIApplyResult>(`/v1/workspaces/${ws}/ai/suggestions/${id}:review`,{method:"POST",body:JSON.stringify({state})}),
   aiRuns:(ws:string)=>requestItems<AIRun>(`/v1/workspaces/${ws}/ai/runs`),
+  task:(ws:string,id:string)=>request<BackgroundTask>(`/v1/workspaces/${ws}/tasks/${id}`),
   rebuildSearchIndex:(ws:string)=>request<{chunks:number}>(`/v1/workspaces/${ws}/search:index`,{method:"POST"}),
   hybridSearch:(ws:string,q:string,locale="")=>requestItems<SearchHit>(`/v1/workspaces/${ws}/hybrid-search?q=${encodeURIComponent(q)}${locale?`&locale=${encodeURIComponent(locale)}`:""}`),
   rag:(ws:string,query:string,locale="")=>request<{answer:string;sources:SearchHit[]}>(`/v1/workspaces/${ws}/rag`,{method:"POST",body:JSON.stringify({query,locale})}),
@@ -279,3 +281,14 @@ export const api = {
   applyImport:async(ws:string,format:string,file:File)=>{const response=await fetch(`/api/v1/workspaces/${ws}/imports/${format}?mode=apply`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/octet-stream"},body:file});if(!response.ok){const problem=await response.json().catch(()=>({}));throw new Error(problem.detail??"导入失败")};return response.json() as Promise<ImportReport>},
 };
 export type SearchHit={content_id:string;title:string;summary:string;locale:string;type:string;slug:string;excerpt:string;score:number};
+
+export async function waitForTask(workspace:string,taskID:string,timeoutMs=120000){
+  const deadline=Date.now()+timeoutMs;
+  while(Date.now()<deadline){
+    const task=await api.task(workspace,taskID);
+    if(task.state==="succeeded")return task;
+    if(task.state==="dead")throw new Error(task.last_error||"后台任务执行失败");
+    await new Promise(resolve=>setTimeout(resolve,1000));
+  }
+  throw new Error("后台任务仍在执行，请稍后刷新查看结果");
+}

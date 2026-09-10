@@ -12,12 +12,16 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/inbox/application"
 	"github.com/ksamwang/PersonalContentPlatform/internal/inbox/domain"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/httpx"
+	taskapp "github.com/ksamwang/PersonalContentPlatform/internal/task/application"
 )
 
 type HTTP struct {
 	service *application.Service
 	auth    func(http.Handler) http.Handler
+	queue   *taskapp.Queue
 }
+
+func (h *HTTP) WithQueue(queue *taskapp.Queue) *HTTP { h.queue = queue; return h }
 
 func NewHTTP(service *application.Service, auth func(http.Handler) http.Handler) *HTTP {
 	return &HTTP{service: service, auth: auth}
@@ -113,6 +117,15 @@ func (h *HTTP) process(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ws, _, _ := principal(r)
+	if h.queue != nil {
+		jobID, err := h.queue.Enqueue(r.Context(), ws, "inbox.process", map[string]any{"item_id": id})
+		if err != nil {
+			httpx.Error(w, 500, "task_enqueue_failed", err.Error())
+			return
+		}
+		httpx.JSON(w, http.StatusAccepted, map[string]any{"job_id": jobID, "state": "pending"})
+		return
+	}
 	item, err := h.service.Process(r.Context(), ws, id)
 	if err != nil {
 		httpx.Error(w, 422, "inbox_processing_failed", err.Error())
