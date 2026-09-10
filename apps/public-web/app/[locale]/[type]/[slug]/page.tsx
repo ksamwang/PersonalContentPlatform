@@ -31,7 +31,7 @@ export default async function Published({ params }: Props) {
       <SiteHeader locale={p.locale} name={settings.site.name} rss={settings.site.rss_enabled} alternate={alternatePath}/>
       <main id="content" className="article-shell">
         <article>
-          <header>
+          <header className="article-header">
             <span className="kicker">
               {p.type} ·{" "}
               {new Intl.DateTimeFormat(p.locale, { dateStyle: "long" }).format(
@@ -48,7 +48,7 @@ export default async function Published({ params }: Props) {
             dangerouslySetInnerHTML={{ __html: page.html }}
           />
           {!alternate&&<p className="translation-note">{p.locale==="zh"?"此内容暂时没有英文版本。":"A Chinese version is not available yet."}</p>}
-          <ShareActions title={page.title} summary={page.summary} siteName={settings.site.name} cover={cover} accent={settings.site.accent_color||"#d82f76"} footer={settings.site.share_footer}/>
+          <ShareActions locale={p.locale} title={page.title} summary={page.summary} siteName={settings.site.name} cover={cover} accent={settings.site.accent_color||"#d82f76"} footer={settings.site.share_footer}/>
         </article>
       </main>
       <footer>
