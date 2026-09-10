@@ -865,9 +865,10 @@ select:focus-visible,
   .sidebar nav { display:none; width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); padding:12px 0 4px; }
   .sidebar.menu-open nav { display:grid; }
   .sidebar-account { margin-top: 0; padding: 0; border: 0; display: flex; }
-  .sidebar-account .settings,
   .sidebar-account .account-meta { display: none; }
+  .sidebar-account .settings,
   .sidebar-account .logout { width: 44px; padding: 0; justify-content: center; }
+  .sidebar-account .settings span,
   .sidebar-account .logout span { display: none; }
   .workspace {
     height:auto;
