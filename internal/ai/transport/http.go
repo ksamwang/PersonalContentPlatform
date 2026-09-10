@@ -89,9 +89,10 @@ func principal(r *http.Request) (uuid.UUID, uuid.UUID, bool) {
 }
 
 type suggestInput struct {
-	TargetID uuid.UUID `json:"target_id"`
-	Purpose  string    `json:"purpose"`
-	Input    string    `json:"input"`
+	TargetID       uuid.UUID `json:"target_id"`
+	LocalizationID uuid.UUID `json:"localization_id"`
+	Purpose        string    `json:"purpose"`
+	Input          string    `json:"input"`
 }
 
 func (h *HTTP) suggest(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +106,7 @@ func (h *HTTP) suggest(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, 400, "invalid_request", err.Error())
 		return
 	}
-	idValue, err := h.service.Suggest(r.Context(), ws, user, in.TargetID, in.Purpose, in.Input)
+	idValue, err := h.service.Suggest(r.Context(), ws, user, in.TargetID, in.LocalizationID, in.Purpose, in.Input)
 	if err != nil {
 		httpx.Error(w, 503, "ai_unavailable", err.Error())
 		return
@@ -129,9 +130,10 @@ func (h *HTTP) review(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, 400, "invalid_request", "invalid review request")
 		return
 	}
-	if err = h.service.Review(r.Context(), ws, user, idValue, in.State); err != nil {
+	result, err := h.service.Review(r.Context(), ws, user, idValue, in.State)
+	if err != nil {
 		httpx.Error(w, 422, "review_invalid", err.Error())
 		return
 	}
-	w.WriteHeader(204)
+	httpx.JSON(w, 200, result)
 }

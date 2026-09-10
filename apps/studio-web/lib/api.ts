@@ -82,6 +82,7 @@ export type KnowledgeEntity={id:string;type:string;canonical_name:string;descrip
 export type KnowledgeRelation={id:string;source_id:string;target_id:string;predicate:string;confirmed:boolean;created_at:string};
 export type KnowledgeMention={id:string;revision_id:string;entity_id:string;entity_name:string;content_id:string;content_title:string;locale:string;confidence:number;confirmed:boolean;created_at:string};
 export type AISuggestion={id:string;target_id:string;target_title:string;kind:string;payload:{text?:string};state:"pending"|"accepted"|"rejected";created_at:string};
+export type AIApplyResult={applied:string[];draft_version?:number};
 export type AIRun={id:string;purpose:string;provider:string;model:string;status:"running"|"succeeded"|"failed";usage:{input_tokens?:number;output_tokens?:number};error_code:string;started_at:string;completed_at?:string};
 export type PublicationRecord={id:string;content_id:string;title:string;locale:string;channel:string;state:string;scheduled_at?:string;published_at?:string;attempts:number;last_error:string;created_at:string};
 export type PublicationChannel={channel:string;name:string;status:string;detail:string};
@@ -262,9 +263,9 @@ export const api = {
   knowledgeMentions:(ws:string)=>requestItems<KnowledgeMention>(`/v1/workspaces/${ws}/knowledge/mentions`),
   extractKnowledgeMentions:(ws:string)=>requestItems<KnowledgeMention>(`/v1/workspaces/${ws}/knowledge/mentions:extract`,{method:"POST"}),
   confirmKnowledgeMention:(ws:string,id:string)=>request<void>(`/v1/workspaces/${ws}/knowledge/mentions/${id}:confirm`,{method:"POST"}),
-  aiSuggest:(ws:string,value:{target_id:string;purpose:string;input:string})=>request<{suggestion_id:string;state:string}>(`/v1/workspaces/${ws}/ai/suggestions`,{method:"POST",body:JSON.stringify(value)}),
+  aiSuggest:(ws:string,value:{target_id:string;localization_id:string;purpose:string;input:string})=>request<{suggestion_id:string;state:string}>(`/v1/workspaces/${ws}/ai/suggestions`,{method:"POST",body:JSON.stringify(value)}),
   aiSuggestions:(ws:string,state="")=>requestItems<AISuggestion>(`/v1/workspaces/${ws}/ai/suggestions${state?`?state=${state}`:""}`),
-  reviewAISuggestion:(ws:string,id:string,state:"accepted"|"rejected")=>request<void>(`/v1/workspaces/${ws}/ai/suggestions/${id}:review`,{method:"POST",body:JSON.stringify({state})}),
+  reviewAISuggestion:(ws:string,id:string,state:"accepted"|"rejected")=>request<AIApplyResult>(`/v1/workspaces/${ws}/ai/suggestions/${id}:review`,{method:"POST",body:JSON.stringify({state})}),
   aiRuns:(ws:string)=>requestItems<AIRun>(`/v1/workspaces/${ws}/ai/runs`),
   rebuildSearchIndex:(ws:string)=>request<{chunks:number}>(`/v1/workspaces/${ws}/search:index`,{method:"POST"}),
   hybridSearch:(ws:string,q:string,locale="")=>requestItems<SearchHit>(`/v1/workspaces/${ws}/hybrid-search?q=${encodeURIComponent(q)}${locale?`&locale=${encodeURIComponent(locale)}`:""}`),

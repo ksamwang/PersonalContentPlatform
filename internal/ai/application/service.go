@@ -21,7 +21,7 @@ type ProviderResolver interface {
 }
 
 func New(db *pgxpool.Pool, p ProviderResolver) *Service { return &Service{db: db, providers: p} }
-func (s *Service) Suggest(ctx context.Context, ws, user, target uuid.UUID, purpose, input string) (uuid.UUID, error) {
+func (s *Service) Suggest(ctx context.Context, ws, user, target, localization uuid.UUID, purpose, input string) (uuid.UUID, error) {
 	prompts := map[string]string{
 		"summary":  "Create a concise, faithful summary for the supplied content. Return plain text only.",
 		"tags":     "Suggest up to five precise tags for the supplied content. Return a JSON array of strings only.",
@@ -39,7 +39,7 @@ func (s *Service) Suggest(ctx context.Context, ws, user, target uuid.UUID, purpo
 	if err != nil {
 		return uuid.Nil, err
 	}
-	refs, _ := json.Marshal(map[string]any{"target_object_id": target})
+	refs, _ := json.Marshal(map[string]any{"target_object_id": target, "localization_id": localization})
 	if _, err := s.db.Exec(ctx, `INSERT INTO ai_runs(id,workspace_id,purpose,provider,model,input_refs,status,created_by) VALUES($1,$2,$3,$4,$5,$6,'running',$7)`, runID, ws, purpose, provider.Name(), model, refs, user); err != nil {
 		return uuid.Nil, err
 	}
@@ -118,10 +118,25 @@ func (s *Service) Runs(ctx context.Context, ws uuid.UUID) ([]Run, error) {
 	}
 	return items, rows.Err()
 }
-func (s *Service) Review(ctx context.Context, ws, user, idValue uuid.UUID, state string) error {
+func (s *Service) Review(ctx context.Context, ws, user, idValue uuid.UUID, state string) (ApplyResult, error) {
 	if state != "accepted" && state != "rejected" {
-		return fmt.Errorf("invalid review state")
+		return ApplyResult{}, fmt.Errorf("invalid review state")
 	}
-	_, err := s.db.Exec(ctx, `UPDATE ai_suggestions SET state=$1,reviewed_by=$2,reviewed_at=now() WHERE id=$3 AND workspace_id=$4 AND state='pending'`, state, user, idValue, ws)
-	return err
+	if state == "rejected" {
+		tag, err := s.db.Exec(ctx, `UPDATE ai_suggestions SET state='rejected',reviewed_by=$1,reviewed_at=now() WHERE id=$2 AND workspace_id=$3 AND state='pending'`, user, idValue, ws)
+		if err == nil && tag.RowsAffected() == 0 {
+			return ApplyResult{}, fmt.Errorf("suggestion has already been reviewed")
+		}
+		return ApplyResult{Applied: []string{}}, err
+	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+	defer tx.Rollback(ctx)
+	result, err := s.applySuggestion(ctx, tx, ws, user, idValue)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+	return result, tx.Commit(ctx)
 }
