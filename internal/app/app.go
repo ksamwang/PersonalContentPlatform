@@ -82,6 +82,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 	knowledgeService := knowledgeapp.New(knowledgepg.New(db))
 	aiService := aiapp.New(db, openai.NewResolver(settingsRepository, openai.New(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)))
 	taskQueue := taskapp.NewQueue(db)
+	cacheInvalidator := publicationapp.NewCacheInvalidator(cfg.PublicWebOrigin, cfg.PublicRevalidateToken)
 	integrationRepository := integrationpg.New(db)
 	return &App{
 		DB:               db,
@@ -89,7 +90,7 @@ func New(db *pgxpool.Pool, cfg config.Config) (*App, error) {
 		identity:         identityTransport,
 		content:          contenthttp.NewHTTP(contentService, identityTransport.RequireSession),
 		public:           publicationhttp.NewHTTP(db),
-		publicationAdmin: publicationhttp.NewAdminHTTP(publicationapp.NewService(db), identityTransport.RequireSession),
+		publicationAdmin: publicationhttp.NewAdminHTTP(publicationapp.NewService(db).WithCache(cacheInvalidator), identityTransport.RequireSession),
 		asset:            assethttp.NewHTTP(assetService, identityTransport.RequireSession),
 		knowledge:        knowledgehttp.NewHTTP(knowledgeService, identityTransport.RequireSession),
 		ai:               aihttp.NewHTTP(aiService, identityTransport.RequireSession).WithQueue(taskQueue),

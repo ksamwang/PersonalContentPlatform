@@ -19,6 +19,12 @@ type Processor struct {
 	indexer  interface {
 		IndexContent(context.Context, uuid.UUID, uuid.UUID) (int, error)
 	}
+	cache CacheInvalidator
+}
+
+func (p *Processor) WithCache(invalidator CacheInvalidator) *Processor {
+	p.cache = invalidator
+	return p
 }
 
 func NewProcessor(db *pgxpool.Pool, workerID string) *Processor {
@@ -71,6 +77,7 @@ func (p *Processor) processOne(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	invalidateCache := false
 	switch e.Type {
 	case "ContentCreated", "ContentRevisionCreated":
 		err = p.indexContent(ctx, tx, e)
@@ -81,6 +88,7 @@ func (p *Processor) processOne(ctx context.Context) (bool, error) {
 		}
 	case "PublicationRequested":
 		err = p.publishWebsite(ctx, tx, e)
+		invalidateCache = err == nil
 	default:
 		err = nil
 	}
@@ -101,7 +109,15 @@ func (p *Processor) processOne(ctx context.Context) (bool, error) {
 	if _, err = tx.Exec(ctx, `UPDATE outbox_events SET dispatched_at=now(),attempts=attempts+1,last_error=NULL WHERE id=$1`, e.ID); err != nil {
 		return true, err
 	}
-	return true, tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		return true, err
+	}
+	if invalidateCache && p.cache != nil {
+		if cacheErr := p.cache.Invalidate(ctx, e.WorkspaceID); cacheErr != nil {
+			slog.Warn("invalidate public cache", "workspace_id", e.WorkspaceID, "error", cacheErr)
+		}
+	}
+	return true, nil
 }
 func (p *Processor) indexContent(ctx context.Context, tx pgx.Tx, e event) error {
 	rows, err := tx.Query(ctx, `SELECT c.object_id,r.id,l.locale,c.visibility,r.title,r.summary,r.body_json FROM contents c JOIN content_localizations l ON l.content_id=c.object_id JOIN content_revisions r ON r.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.object_id=$2 AND c.deleted_at IS NULL AND l.deleted_at IS NULL AND l.state<>'archived'`, e.WorkspaceID, e.AggregateID)

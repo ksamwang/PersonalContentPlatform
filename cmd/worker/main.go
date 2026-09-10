@@ -85,7 +85,10 @@ func main() {
 		},
 	}
 	errors := make(chan error, 3)
-	go func() { errors <- publication.NewProcessor(db, "default").WithIndexer(search).Run(ctx) }()
+	cacheInvalidator := publication.NewCacheInvalidator(cfg.PublicWebOrigin, cfg.PublicRevalidateToken)
+	go func() {
+		errors <- publication.NewProcessor(db, "default").WithIndexer(search).WithCache(cacheInvalidator).Run(ctx)
+	}()
 	go func() { errors <- taskapp.NewProcessor(db, "default", handlers).Run(ctx) }()
 	go func() {
 		errors <- integration.NewWebhookDispatcher(integrationRepository, webhook.NewSender(), 8).Run(ctx)

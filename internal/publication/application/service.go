@@ -10,9 +10,13 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/id"
 )
 
-type Service struct{ db *pgxpool.Pool }
+type Service struct {
+	db    *pgxpool.Pool
+	cache CacheInvalidator
+}
 
-func NewService(db *pgxpool.Pool) *Service { return &Service{db: db} }
+func NewService(db *pgxpool.Pool) *Service                         { return &Service{db: db} }
+func (s *Service) WithCache(invalidator CacheInvalidator) *Service { s.cache = invalidator; return s }
 
 type Record struct {
 	ID          uuid.UUID  `json:"id"`
@@ -97,7 +101,13 @@ func (s *Service) Withdraw(ctx context.Context, ws, idv uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+	if s.cache != nil {
+		_ = s.cache.Invalidate(ctx, ws)
+	}
+	return nil
 }
 
 type Channel struct {
