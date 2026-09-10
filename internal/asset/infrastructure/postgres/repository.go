@@ -147,7 +147,7 @@ func (r *Repository) SaveVariant(ctx context.Context, workspaceID, assetID uuid.
 	}
 	defer tx.Rollback(ctx)
 	blobID := id.New()
-	if err = tx.QueryRow(ctx, `INSERT INTO blobs(id,sha256,size,storage_key,mime,storage_profile_id) VALUES($1,$2,$3,$4,'image/jpeg',$5) ON CONFLICT(sha256,size) DO UPDATE SET sha256=EXCLUDED.sha256 RETURNING id`, blobID, sha, size, key, profileID).Scan(&blobID); err != nil {
+	if err = tx.QueryRow(ctx, `INSERT INTO blobs(id,sha256,size,storage_key,mime,storage_profile_id) VALUES($1,$2,$3,$4,'image/jpeg',$5) ON CONFLICT(sha256,size) DO UPDATE SET storage_key=EXCLUDED.storage_key,mime=EXCLUDED.mime,storage_profile_id=EXCLUDED.storage_profile_id RETURNING id`, blobID, sha, size, key, profileID).Scan(&blobID); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO asset_variants(id,workspace_id,asset_id,recipe,blob_id,width,height) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(asset_id,recipe) DO UPDATE SET blob_id=EXCLUDED.blob_id,width=EXCLUDED.width,height=EXCLUDED.height`, id.New(), workspaceID, assetID, recipe, blobID, width, height); err != nil {
