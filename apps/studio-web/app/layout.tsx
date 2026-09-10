@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./styles/editor-polish.css";
 export const metadata: Metadata = {
   title: "Content Studio",
   description: "Personal Content Platform Studio",

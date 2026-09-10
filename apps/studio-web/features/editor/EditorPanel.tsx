@@ -237,6 +237,24 @@ export function EditorPanel({
   return (
     <section className={`editor-panel${focusMode?" focus-mode":""}`}>
       <LocalizationTabs workspace={workspace} content={content} active={localization.id} canEdit={canEdit} translating={translationBusy} onSelect={id=>void switchLocalization(id)} onCreated={(next,targetID)=>{onContentChanged(next);setActiveLocalizationID(targetID)}} onTranslate={()=>void translate()}/>
+      <div className="editor-commandbar" aria-label="文稿操作">
+        <span className="save-state" aria-live="polite">
+          {status}
+        </span>
+        <div className="editor-actions">
+          <button className="secondary" onClick={()=>void openProperties()}><PanelRight aria-hidden size={17}/>属性</button>
+          <button className="secondary" onClick={()=>setHistoryOpen(v=>!v)}><History aria-hidden size={17}/>版本</button>
+          <button className="secondary" disabled={busy||!canEdit} onClick={() => void preview()}><Eye aria-hidden size={17}/>预览</button>
+          <button className="secondary" disabled={busy||!canEdit} onClick={() => void save()}>
+            <Save aria-hidden size={17} />
+            保存
+          </button>
+          <button className="primary compact" disabled={busy||!canEdit} onClick={publish}>
+            <Send aria-hidden size={17} />
+            {busy ? "发布中" : "发布"}
+          </button>
+        </div>
+      </div>
       <header className="editor-header">
         <div>
           <span className="eyebrow">
@@ -253,22 +271,6 @@ export function EditorPanel({
               scheduleSave();
             }}
           />
-        </div>
-        <div className="editor-actions">
-          <span className="save-state" aria-live="polite">
-            {status}
-          </span>
-          <button className="secondary" onClick={()=>void openProperties()}><PanelRight aria-hidden size={17}/>属性</button>
-          <button className="secondary" onClick={()=>setHistoryOpen(v=>!v)}><History aria-hidden size={17}/>版本</button>
-          <button className="secondary" disabled={busy||!canEdit} onClick={() => void preview()}><Eye aria-hidden size={17}/>预览</button>
-          <button className="secondary" disabled={busy||!canEdit} onClick={() => void save()}>
-            <Save aria-hidden size={17} />
-            保存草稿
-          </button>
-          <button className="primary compact" disabled={busy||!canEdit} onClick={publish}>
-            <Send aria-hidden size={17} />
-            {busy ? "发布中" : "发布"}
-          </button>
         </div>
       </header>
       <input

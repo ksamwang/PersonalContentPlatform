@@ -1,0 +1,199 @@
+/* Studio authoring and feature-page refinements. Kept separate from global tokens and shell rules. */
+.page-heading,
+.settings-heading {
+  max-width: 1280px;
+}
+
+.page-heading {
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-heading h1,
+.settings-heading h1 {
+  font-size: clamp(2.35rem, 4vw, 3.7rem);
+  letter-spacing: -0.035em;
+}
+
+.page-heading p,
+.settings-heading p {
+  max-width: 720px;
+}
+
+.assets-page,
+.collections-page,
+.knowledge-page,
+.ai-page,
+.discover-page,
+.publication-page,
+.migration-page,
+.settings-page {
+  width: min(1280px, 100%);
+}
+
+.inline-status {
+  min-height: 24px;
+  margin: 8px 0;
+  font-size: 0.82rem;
+}
+
+.editor-panel {
+  padding: 22px clamp(24px, 3.2vw, 52px) 28px;
+}
+
+.localization-bar {
+  margin: -4px 0 12px;
+}
+
+.localization-tabs {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.localization-tabs button {
+  flex: 0 0 auto;
+}
+
+.editor-commandbar {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 6px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-commandbar .save-state {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.editor-actions .primary,
+.editor-actions .secondary {
+  min-height: 44px;
+  padding-inline: 15px;
+}
+
+.editor-header,
+.summary-input {
+  max-width: 1040px;
+  margin-inline: auto;
+}
+
+.editor-header > div {
+  width: 100%;
+}
+
+.title-input {
+  font-size: clamp(2.6rem, 4.2vw, 4.35rem);
+  margin-top: 8px;
+}
+
+.summary-input {
+  display: block;
+  padding: 14px 0 18px;
+}
+
+.toolbar {
+  top: 0;
+  margin-top: 6px;
+  padding: 8px 0;
+  box-shadow: 0 8px 14px -14px rgba(28, 21, 25, 0.42);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.toolbar-group.toolbar-end {
+  margin-left: auto;
+}
+
+.prose-editor {
+  margin-top: 30px;
+}
+
+.editor-stats {
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.revision-panel,
+.properties-panel {
+  width: min(460px, 100vw);
+  padding: 24px;
+}
+
+.asset-card,
+.hybrid-results > button,
+.publication-title,
+.entity-index button,
+.collection-index button {
+  transition: background-color 180ms ease-out, border-color 180ms ease-out, color 180ms ease-out;
+}
+
+.asset-card:hover,
+.hybrid-results > button:hover,
+.entity-index button:hover,
+.collection-index button:hover {
+  background: var(--surface-2);
+}
+
+.publication-table article,
+.ai-runs article,
+.mention-review article {
+  min-height: 68px;
+}
+
+@media (max-width: 1100px) {
+  .editor-commandbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .editor-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .editor-panel {
+    padding: 16px;
+  }
+
+  .editor-commandbar .save-state {
+    white-space: normal;
+  }
+
+  .editor-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .editor-actions .primary,
+  .editor-actions .secondary {
+    width: 100%;
+  }
+
+  .editor-actions .primary:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .title-input {
+    font-size: clamp(2.25rem, 13vw, 3.25rem);
+  }
+
+  .page-heading {
+    padding-bottom: 14px;
+  }
+}
