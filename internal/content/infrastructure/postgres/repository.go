@@ -158,6 +158,9 @@ func (r *Repository) Archive(ctx context.Context, workspaceID, contentID uuid.UU
 	if _, err = tx.Exec(ctx, `DELETE FROM search_documents WHERE workspace_id=$1 AND object_id=$2`, workspaceID, contentID); err != nil {
 		return err
 	}
+	if _, err = tx.Exec(ctx, `DELETE FROM content_chunks WHERE workspace_id=$1 AND content_id=$2`, workspaceID, contentID); err != nil {
+		return err
+	}
 	if _, err = tx.Exec(ctx, `DELETE FROM publication_views WHERE workspace_id=$1 AND content_id=$2`, workspaceID, contentID); err != nil {
 		return err
 	}
@@ -180,6 +183,9 @@ func (r *Repository) Restore(ctx context.Context, workspaceID, contentID uuid.UU
 	if _, err = tx.Exec(ctx, `UPDATE contents SET updated_at=now() WHERE workspace_id=$1 AND object_id=$2 AND deleted_at IS NULL`, workspaceID, contentID); err != nil {
 		return err
 	}
+	if err = outbox.Add(ctx, tx, workspaceID, contentID, "content", "ContentRevisionCreated", map[string]any{"content_id": contentID, "reason": "restored"}); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
 }
 
@@ -200,6 +206,9 @@ func (r *Repository) SoftDelete(ctx context.Context, workspaceID, contentID uuid
 		return err
 	}
 	if _, err = tx.Exec(ctx, `DELETE FROM search_documents WHERE workspace_id=$1 AND object_id=$2`, workspaceID, contentID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM content_chunks WHERE workspace_id=$1 AND content_id=$2`, workspaceID, contentID); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `DELETE FROM publication_views WHERE workspace_id=$1 AND content_id=$2`, workspaceID, contentID); err != nil {

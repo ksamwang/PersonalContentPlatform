@@ -16,10 +16,20 @@ import (
 type Processor struct {
 	db       *pgxpool.Pool
 	workerID string
+	indexer  interface {
+		IndexContent(context.Context, uuid.UUID, uuid.UUID) (int, error)
+	}
 }
 
 func NewProcessor(db *pgxpool.Pool, workerID string) *Processor {
 	return &Processor{db: db, workerID: workerID}
+}
+
+func (p *Processor) WithIndexer(indexer interface {
+	IndexContent(context.Context, uuid.UUID, uuid.UUID) (int, error)
+}) *Processor {
+	p.indexer = indexer
+	return p
 }
 
 type event struct {
@@ -64,6 +74,11 @@ func (p *Processor) processOne(ctx context.Context) (bool, error) {
 	switch e.Type {
 	case "ContentCreated", "ContentRevisionCreated":
 		err = p.indexContent(ctx, tx, e)
+		if err == nil && p.indexer != nil {
+			if _, indexErr := p.indexer.IndexContent(ctx, e.WorkspaceID, e.AggregateID); indexErr != nil {
+				slog.Warn("update semantic index", "content_id", e.AggregateID, "error", indexErr)
+			}
+		}
 	case "PublicationRequested":
 		err = p.publishWebsite(ctx, tx, e)
 	default:

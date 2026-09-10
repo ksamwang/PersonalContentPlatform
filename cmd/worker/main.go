@@ -8,6 +8,8 @@ import (
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/config"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/database"
 	publication "github.com/ksamwang/PersonalContentPlatform/internal/publication/application"
+	retrieval "github.com/ksamwang/PersonalContentPlatform/internal/retrieval/application"
+	settingspg "github.com/ksamwang/PersonalContentPlatform/internal/settings/infrastructure/postgres"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -31,7 +33,8 @@ func main() {
 	slog.Info("worker started")
 	integrationRepository := integrationpg.New(db)
 	errors := make(chan error, 2)
-	go func() { errors <- publication.NewProcessor(db, "default").Run(ctx) }()
+	search := retrieval.New(db, settingspg.New(db))
+	go func() { errors <- publication.NewProcessor(db, "default").WithIndexer(search).Run(ctx) }()
 	go func() {
 		errors <- integration.NewWebhookDispatcher(integrationRepository, webhook.NewSender(), 8).Run(ctx)
 	}()

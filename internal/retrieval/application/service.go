@@ -31,6 +31,12 @@ type Hit struct {
 	Score     float64   `json:"score"`
 }
 
+type indexSource struct {
+	content, localization, revision uuid.UUID
+	locale                          string
+	texts                           []string
+}
+
 func New(db *pgxpool.Pool, settings settingsports.Repository) *Service {
 	return &Service{db: db, settings: settings}
 }
@@ -74,30 +80,60 @@ func (s *Service) embedder(ctx context.Context, ws uuid.UUID) (*openai.Provider,
 }
 
 func (s *Service) Index(ctx context.Context, ws uuid.UUID) (int, error) {
-	rows, err := s.db.Query(ctx, `SELECT c.object_id,l.id,rv.id,l.locale,rv.title,rv.summary,rv.body_json FROM contents c JOIN content_localizations l ON l.content_id=c.object_id JOIN content_revisions rv ON rv.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.deleted_at IS NULL AND l.deleted_at IS NULL`, ws)
+	sources, err := s.indexSources(ctx, ws, uuid.Nil)
 	if err != nil {
 		return 0, err
 	}
-	type source struct {
-		content, localization, revision uuid.UUID
-		locale                          string
-		texts                           []string
+	return s.storeSources(ctx, ws, uuid.Nil, sources)
+}
+
+func (s *Service) IndexContent(ctx context.Context, ws, contentID uuid.UUID) (int, error) {
+	sources, err := s.indexSources(ctx, ws, contentID)
+	if err != nil {
+		return 0, err
 	}
-	sources := []source{}
-	all := []string{}
+	return s.storeSources(ctx, ws, contentID, sources)
+}
+
+func (s *Service) indexSources(ctx context.Context, ws, contentID uuid.UUID) ([]indexSource, error) {
+	query := `SELECT c.object_id,l.id,rv.id,l.locale,rv.title,rv.summary,rv.body_json FROM contents c JOIN content_localizations l ON l.content_id=c.object_id JOIN content_revisions rv ON rv.id=l.current_revision_id WHERE c.workspace_id=$1 AND c.deleted_at IS NULL AND l.deleted_at IS NULL AND l.state<>'archived'`
+	args := []any{ws}
+	if contentID != uuid.Nil {
+		query += ` AND c.object_id=$2`
+		args = append(args, contentID)
+	}
+	rows, err := s.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	sources := []indexSource{}
 	for rows.Next() {
-		var c, l, r uuid.UUID
-		var locale, title, summary string
+		var source indexSource
+		var title, summary string
 		var body []byte
-		if err = rows.Scan(&c, &l, &r, &locale, &title, &summary, &body); err != nil {
-			rows.Close()
+		if err = rows.Scan(&source.content, &source.localization, &source.revision, &source.locale, &title, &summary, &body); err != nil {
+			return nil, err
+		}
+		source.texts = chunks(title + "\n" + summary + "\n" + document.PlainText(body))
+		sources = append(sources, source)
+	}
+	return sources, rows.Err()
+}
+
+func (s *Service) storeSources(ctx context.Context, ws, contentID uuid.UUID, sources []indexSource) (int, error) {
+	all := []string{}
+	for _, source := range sources {
+		all = append(all, source.texts...)
+	}
+	if len(all) == 0 {
+		if contentID == uuid.Nil {
+			_, err := s.db.Exec(ctx, `DELETE FROM content_chunks WHERE workspace_id=$1`, ws)
 			return 0, err
 		}
-		parts := chunks(title + "\n" + summary + "\n" + document.PlainText(body))
-		sources = append(sources, source{c, l, r, locale, parts})
-		all = append(all, parts...)
+		_, err := s.db.Exec(ctx, `DELETE FROM content_chunks WHERE workspace_id=$1 AND content_id=$2`, ws, contentID)
+		return 0, err
 	}
-	rows.Close()
 	provider, model, err := s.embedder(ctx, ws)
 	if err != nil {
 		return 0, err
@@ -119,7 +155,12 @@ func (s *Service) Index(ctx context.Context, ws uuid.UUID) (int, error) {
 		return 0, err
 	}
 	defer tx.Rollback(ctx)
-	if _, err = tx.Exec(ctx, `DELETE FROM content_chunks WHERE workspace_id=$1`, ws); err != nil {
+	if contentID == uuid.Nil {
+		_, err = tx.Exec(ctx, `DELETE FROM content_chunks WHERE workspace_id=$1`, ws)
+	} else {
+		_, err = tx.Exec(ctx, `DELETE FROM content_chunks WHERE workspace_id=$1 AND content_id=$2`, ws, contentID)
+	}
+	if err != nil {
 		return 0, err
 	}
 	offset := 0
@@ -140,15 +181,15 @@ func (s *Service) Search(ctx context.Context, ws uuid.UUID, q, locale string, li
 	}
 	provider, model, err := s.embedder(ctx, ws)
 	if err != nil {
-		return nil, err
+		return s.fullTextSearch(ctx, ws, q, locale, limit)
 	}
 	vectors, _, err := provider.Embed(ctx, []string{q}, model)
-	if err != nil {
-		return nil, err
+	if err != nil || len(vectors) == 0 {
+		return s.fullTextSearch(ctx, ws, q, locale, limit)
 	}
 	rows, err := s.db.Query(ctx, `SELECT ch.content_id,rv.title,rv.summary,ch.locale,c.type,l.slug,ch.text,0.35*ts_rank_cd(ch.tsv,websearch_to_tsquery('simple',$2))+0.65*(1-(ch.embedding <=> $3::vector)) score FROM content_chunks ch JOIN contents c ON c.object_id=ch.content_id JOIN content_localizations l ON l.id=ch.localization_id JOIN content_revisions rv ON rv.id=ch.revision_id WHERE ch.workspace_id=$1 AND ($4='' OR ch.locale=$4) ORDER BY score DESC LIMIT $5`, ws, q, vectorLiteral(vectors[0]), locale, limit)
 	if err != nil {
-		return nil, err
+		return s.fullTextSearch(ctx, ws, q, locale, limit)
 	}
 	defer rows.Close()
 	hits := []Hit{}
@@ -162,6 +203,29 @@ func (s *Service) Search(ctx context.Context, ws uuid.UUID, q, locale string, li
 			hits = append(hits, h)
 			seen[h.ContentID] = true
 		}
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(hits) == 0 {
+		return s.fullTextSearch(ctx, ws, q, locale, limit)
+	}
+	return hits, nil
+}
+
+func (s *Service) fullTextSearch(ctx context.Context, ws uuid.UUID, q, locale string, limit int) ([]Hit, error) {
+	rows, err := s.db.Query(ctx, `SELECT s.object_id,s.title,s.summary,s.locale,c.type,l.slug,left(s.body_text,600),ts_rank_cd(s.tsv,websearch_to_tsquery('simple',$2)) FROM search_documents s JOIN contents c ON c.object_id=s.object_id JOIN content_localizations l ON l.content_id=s.object_id AND l.locale=s.locale WHERE s.workspace_id=$1 AND ($3='' OR s.locale=$3) AND s.tsv @@ websearch_to_tsquery('simple',$2) ORDER BY ts_rank_cd(s.tsv,websearch_to_tsquery('simple',$2)) DESC LIMIT $4`, ws, q, locale, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	hits := []Hit{}
+	for rows.Next() {
+		var hit Hit
+		if err = rows.Scan(&hit.ContentID, &hit.Title, &hit.Summary, &hit.Locale, &hit.Type, &hit.Slug, &hit.Excerpt, &hit.Score); err != nil {
+			return nil, err
+		}
+		hits = append(hits, hit)
 	}
 	return hits, rows.Err()
 }
