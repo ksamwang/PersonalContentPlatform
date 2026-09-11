@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "../../../../components/SiteHeader";
 import { ShareActions } from "../../../../components/ShareActions";
+import { articleExcerpt } from "../../../../lib/article-text";
 import { getPage, getPublicSettings, publicBase } from "../../../../lib/content";
 type Props = {
   params: Promise<{ locale: string; type: string; slug: string }>;
@@ -48,7 +49,7 @@ export default async function Published({ params }: Props) {
             dangerouslySetInnerHTML={{ __html: page.html }}
           />
           {!alternate&&<p className="translation-note">{p.locale==="zh"?"此内容暂时没有英文版本。":"A Chinese version is not available yet."}</p>}
-          <ShareActions locale={p.locale} title={page.title} summary={page.summary} siteName={settings.site.name} cover={cover} accent={settings.site.accent_color||"#d82f76"} footer={settings.site.share_footer}/>
+          <ShareActions locale={p.locale} title={page.title} summary={page.summary} excerpt={articleExcerpt(page.html,page.summary)} type={p.type} publishedAt={page.published_at} siteName={settings.site.name} cover={cover} accent={settings.site.accent_color||"#d82f76"} footer={settings.site.share_footer}/>
         </article>
       </main>
       <footer>
