@@ -110,7 +110,6 @@
 }
 
 .collection-detail {
-  max-width: 1280px;
   padding: clamp(20px, 2vw, 32px);
 }
 
@@ -121,6 +120,16 @@
 
 .collection-detail > header h2 {
   font-size: clamp(1.8rem, 2.2vw, 2.35rem);
+}
+
+.add-content select {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.add-content button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .asset-workspace {
@@ -257,6 +266,17 @@
   min-height: calc(100dvh - 208px);
   grid-template-columns: clamp(230px, 17vw, 280px) minmax(0, 1fr);
   border-radius: 8px;
+}
+
+.knowledge-grid.is-empty {
+  min-height: 280px;
+}
+
+.knowledge-grid.is-empty .entity-index > p {
+  margin: 0;
+  padding: 18px 14px;
+  color: var(--muted);
+  font-size: .84rem;
 }
 
 .entity-index label {
@@ -458,7 +478,7 @@
 }
 
 .channel-grid {
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .channel-grid article,
