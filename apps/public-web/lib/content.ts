@@ -46,9 +46,10 @@ export async function listPages(locale: string,filters:{q?:string;tag?:string;ty
   }
 }
 export type PublicCollection={title:string;slug:string;sections:{title:string;items:PublishedPage[]}[]};
+const livePublicData = { cache: "no-store" as const };
 export async function listTags(locale:string):Promise<{name:string;count:number}[]>{try{const response=await fetch(`${origin}/v1/public/${workspace}/${locale}/tags`,publicCache);return response.ok?(await response.json()).items:[]}catch{return []}}
-export async function listCollections(locale:string):Promise<PublicCollection[]>{try{const response=await fetch(`${origin}/v1/public/${workspace}/${locale}/collections`,publicCache);return response.ok?(await response.json()).items:[]}catch{return []}}
-export async function getCollection(locale:string,slug:string):Promise<PublicCollection|null>{try{const response=await fetch(`${origin}/v1/public/${workspace}/${locale}/collections/${encodeURIComponent(slug)}`,publicCache);if(response.status===404)return null;return response.ok?response.json():null}catch{return null}}
+export async function listCollections(locale:string):Promise<PublicCollection[]>{try{const response=await fetch(`${origin}/v1/public/${workspace}/${locale}/collections`,livePublicData);return response.ok?(await response.json()).items:[]}catch{return []}}
+export async function getCollection(locale:string,slug:string):Promise<PublicCollection|null>{try{const response=await fetch(`${origin}/v1/public/${workspace}/${locale}/collections/${encodeURIComponent(slug)}`,livePublicData);if(response.status===404)return null;return response.ok?response.json():null}catch{return null}}
 export function publicBase(settings:PublicSettings){return settings.site.public_url||process.env.PUBLIC_SITE_ORIGIN||"http://localhost:3000"}
 export async function getPreview(token:string):Promise<PreviewPage|null>{
   try{const response=await fetch(`${origin}/v1/previews/${encodeURIComponent(token)}`,{cache:"no-store"});if(response.status===404)return null;if(!response.ok)throw new Error("Preview is unavailable");return response.json()}catch{return null}
