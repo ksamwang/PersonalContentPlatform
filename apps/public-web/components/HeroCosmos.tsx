@@ -56,13 +56,15 @@ export function HeroCosmos({ locale, publicationCount, collectionCount, year }: 
       role="img"
     >
       <canvas ref={canvas} />
-      <div className="cosmos-vignette" aria-hidden />
+      <span className="cosmos-orbit orbit-one" aria-hidden />
+      <span className="cosmos-orbit orbit-two" aria-hidden />
       <div className="cosmos-hud" aria-hidden>
-        <div><span>TRUTH OBSERVATORY</span><b>NO. 01</b></div>
-        <p>{zh ? "移动光标 · 扭曲时空 · 点击释放引力波" : "MOVE · BEND SPACE · PRESS TO PULSE"}</p>
-        <div><span>{String(publicationCount).padStart(2, "0")} NOTES</span><span>{String(collectionCount).padStart(2, "0")} ORBITS</span><span>{year}</span></div>
+        <div className="cosmos-heading"><span>TRUTH OBSERVATORY</span><b>01</b></div>
+        <p className="cosmos-instruction">{zh ? "移动光标改变观测角度 / 点击释放引力波" : "MOVE TO SHIFT THE VIEW / PRESS TO RELEASE A GRAVITY WAVE"}</p>
+        <div className="cosmos-data"><span>{String(publicationCount).padStart(2, "0")} NOTES</span><span>{String(collectionCount).padStart(2, "0")} ORBITS</span><span>{year}</span></div>
       </div>
       <span className="cosmos-crosshair" aria-hidden />
+      <span className="cosmos-index" aria-hidden>BH–01 / FIELD NOTE</span>
       <span className="cosmos-truth" aria-hidden>{zh ? "真相存在于事件视界之外" : "TRUTH LIVES BEYOND THE EVENT HORIZON"}</span>
     </div>
   );

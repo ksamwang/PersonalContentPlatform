@@ -45,14 +45,17 @@ void main() {
   vec2 warped = p * (1.0 + lens * 0.34);
   warped += vec2(cos(angle * 2.0 + time * 0.055), sin(angle * 3.0 - time * 0.04)) * 0.018 / max(r, 0.2);
 
-  vec3 color = vec3(0.006, 0.008, 0.018);
+  vec3 color = vec3(0.0);
   float nebula = noise(warped * 2.4 + vec2(time * 0.012, 0.0));
   nebula *= noise(warped * 5.2 - vec2(0.0, time * 0.009));
-  color += vec3(0.055, 0.018, 0.075) * nebula * smoothstep(1.45, 0.25, r);
+  float fieldFade = 1.0 - smoothstep(0.68, 1.34, r);
+  float nebulaMask = nebula * fieldFade * smoothstep(0.18, 0.62, r);
+  color += vec3(0.22, 0.08, 0.16) * nebulaMask * 0.34;
 
   float starField = stars(warped + pointer * 0.035, 18.0, 0.93);
   starField += stars(warped * 1.17 - pointer * 0.05, 31.0, 0.975) * 0.72;
-  color += vec3(0.72, 0.82, 1.0) * starField * 1.45 * smoothstep(0.20, 0.34, r);
+  float visibleStars = starField * smoothstep(0.20, 0.34, r) * fieldFade;
+  color += vec3(0.34, 0.29, 0.36) * visibleStars * 1.25;
 
   float tilt = mix(3.9, 2.8, pointer.y);
   vec2 diskP = vec2(p.x, p.y * tilt + p.x * (pointer.x - 0.5) * 0.7);
@@ -62,14 +65,15 @@ void main() {
   disk += exp(-abs(diskR - 0.36) * 44.0) * 0.46;
   disk *= smoothstep(0.19, 0.27, r) * smoothstep(0.91, 0.39, diskR);
   float doppler = clamp(0.62 + p.x * 0.95 + flow * 0.22, 0.18, 1.35);
-  vec3 hot = mix(vec3(0.90, 0.06, 0.38), vec3(1.0, 0.76, 0.38), smoothstep(-0.45, 0.46, p.x));
-  hot = mix(hot, vec3(0.78, 0.88, 1.0), smoothstep(0.72, 1.18, doppler));
-  color += hot * disk * (1.35 + doppler) * (0.72 + flow * 0.9);
+  vec3 hot = mix(vec3(0.82, 0.035, 0.31), vec3(0.98, 0.49, 0.26), smoothstep(-0.45, 0.46, p.x));
+  hot = mix(hot, vec3(0.89, 0.82, 0.72), smoothstep(0.82, 1.18, doppler));
+  float diskLight = disk * (1.18 + doppler) * (0.62 + flow * 0.76);
+  color += hot * diskLight;
 
   float photonRing = exp(-abs(r - 0.205) * 105.0);
   float lensArc = exp(-abs(r - 0.255) * 38.0) * (0.34 + 0.66 * pow(abs(sin(angle + time * 0.08)), 5.0));
-  color += vec3(1.0, 0.48, 0.72) * photonRing * 1.8;
-  color += vec3(0.32, 0.46, 1.0) * lensArc * 0.34;
+  color += vec3(0.97, 0.18, 0.48) * photonRing * 1.45;
+  color += vec3(0.40, 0.31, 0.52) * lensArc * 0.28;
 
   float horizon = 1.0 - smoothstep(0.165, 0.207, r);
   color = mix(color, vec3(0.0), horizon);
@@ -78,8 +82,15 @@ void main() {
 
   float wave = exp(-abs(r - (0.27 + pulse * 0.72)) * 55.0) * (1.0 - pulse);
   color += vec3(0.95, 0.12, 0.48) * wave * 0.72;
-  color *= 1.0 - smoothstep(1.0, 1.48, length(uv)) * 0.72;
-  color = pow(color, vec3(0.82));
-  fragColor = vec4(color, 1.0);
+  color *= 1.0 - smoothstep(0.74, 1.36, length(uv));
+  color = pow(max(color, 0.0), vec3(0.86));
+
+  float light = max(color.r, max(color.g, color.b));
+  float blackBody = smoothstep(0.218, 0.178, r);
+  float atmosphere = (nebulaMask * 0.12 + visibleStars * 0.72 + lensArc * 0.18) * fieldFade;
+  float alpha = max(blackBody, clamp(light * 1.12 + atmosphere, 0.0, 0.94));
+  alpha *= 1.0 - smoothstep(0.76, 1.30, r);
+  color = mix(color, vec3(0.012, 0.010, 0.014), blackBody);
+  fragColor = vec4(color, clamp(alpha, 0.0, 1.0));
 }
 `;

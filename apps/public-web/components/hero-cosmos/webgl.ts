@@ -14,7 +14,12 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string) {
 }
 
 export function createBlackHoleRenderer(canvas: HTMLCanvasElement) {
-  const gl = canvas.getContext("webgl2", { alpha: false, antialias: false, powerPreference: "high-performance" });
+  const gl = canvas.getContext("webgl2", {
+    alpha: true,
+    antialias: false,
+    premultipliedAlpha: false,
+    powerPreference: "high-performance",
+  });
   if (!gl) return null;
   const program = gl.createProgram();
   if (!program) return null;
@@ -53,6 +58,8 @@ export function createBlackHoleRenderer(canvas: HTMLCanvasElement) {
       gl.uniform2f(pointer, pointerX, pointerY);
       gl.uniform1f(time, seconds);
       gl.uniform1f(pulse, pulseValue);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     },
     destroy() {
