@@ -490,7 +490,10 @@ select:focus-visible,
   padding: 24px;
   display:flex;
   flex-direction:column;
-  overflow:hidden;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
 }
 .topbar {
   display: flex;
