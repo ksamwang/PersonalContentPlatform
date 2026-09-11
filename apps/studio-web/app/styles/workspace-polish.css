@@ -39,56 +39,52 @@
   font-size: clamp(2.35rem, 3.45vw, 3.8rem);
 }
 
-.assets-page,
-.publication-page {
-  width: min(1240px, 100%);
-  margin-inline: 0;
+.workspace-page {
+  width: 100%;
+  min-width: 0;
   padding-bottom: 40px;
 }
 
-.collections-page,
-.knowledge-page,
-.ai-page {
-  width: min(1180px, 100%);
-  margin-inline: 0;
-  padding-bottom: 40px;
+.workspace-page__header {
+  min-height: 112px;
+  margin-bottom: 18px;
+  padding: 3px 0 17px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 18%, var(--border));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
 }
 
-.discover-page,
-.migration-page {
-  width: min(1100px, 100%);
-  margin-inline: 0;
-  padding-bottom: 40px;
+.workspace-page__intro {
+  min-width: 0;
 }
 
-.settings-page,
-.inbox-page {
-  width: min(1040px, 100%);
-  margin-inline: 0;
-  padding-bottom: 40px;
-}
-
-.page-heading,
-.settings-heading {
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-}
-
-.page-heading h1,
-.settings-heading h1 {
-  margin: 5px 0 7px;
-  font-size: clamp(2.25rem, 3.25vw, 3.15rem);
+.workspace-page__intro h1 {
+  margin: 5px 0 6px;
+  font-family: Newsreader, "Noto Serif SC", serif;
+  font-size: clamp(2.2rem, 2.6vw, 3.05rem);
+  font-weight: 500;
+  line-height: 1;
   letter-spacing: -.035em;
 }
 
-.page-heading p,
-.settings-heading p {
-  max-width: 650px;
-  font-size: .92rem;
+.workspace-page__intro p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  font-size: .9rem;
 }
 
-.heading-actions {
+.workspace-page__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.workspace-page__body {
+  min-width: 0;
 }
 
 .primary,
@@ -116,14 +112,14 @@
   --feature-rule: color-mix(in srgb, var(--text) 18%, var(--border));
 }
 
-.knowledge-page .page-heading,
-.ai-page .page-heading {
+.knowledge-page .workspace-page__header,
+.ai-page .workspace-page__header {
   position: relative;
   border-bottom-color: var(--feature-rule);
 }
 
-.knowledge-page .page-heading::after,
-.ai-page .page-heading::after {
+.knowledge-page .workspace-page__header::after,
+.ai-page .workspace-page__header::after {
   content: "";
   position: absolute;
   right: 0;
@@ -242,18 +238,6 @@
 }
 
 @media (max-width: 1100px) {
-  .assets-page,
-  .collections-page,
-  .knowledge-page,
-  .ai-page,
-  .discover-page,
-  .publication-page,
-  .migration-page,
-  .settings-page,
-  .inbox-page {
-    width: 100%;
-  }
-
   .ai-generator {
     grid-template-columns: 1fr 1fr;
   }
@@ -274,9 +258,20 @@
 }
 
 @media (max-width: 760px) {
-  .page-heading h1,
-  .settings-heading h1 {
+  .workspace-page__header {
+    min-height: 0;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .workspace-page__intro h1 {
     font-size: clamp(2.1rem, 10vw, 2.75rem);
+  }
+
+  .workspace-page__actions {
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .knowledge-grid,
@@ -290,8 +285,7 @@
     padding: 14px;
   }
 
-  .page-heading,
-  .settings-heading {
+  .workspace-page__header {
     margin-bottom: 12px;
   }
 }

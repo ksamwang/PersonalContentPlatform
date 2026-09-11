@@ -3,6 +3,7 @@ import { Archive, FileText, Inbox as InboxIcon, Link2, LoaderCircle, NotebookPen
 import { api, InboxItem, waitForTask } from "../../lib/api";
 import { CaptureForm } from "./CaptureForm";
 import { ConvertDialog } from "./ConvertDialog";
+import { WorkspacePage } from "../studio/WorkspacePage";
 
 export function InboxPanel({workspace,role,onOpenContent}:{workspace:string;role:string;onOpenContent:(id:string)=>void}){
   const [items,setItems]=useState<InboxItem[]>([]),[state,setState]=useState("pending"),[loading,setLoading]=useState(true),[error,setError]=useState(""),[converting,setConverting]=useState<InboxItem>();
@@ -11,8 +12,7 @@ export function InboxPanel({workspace,role,onOpenContent}:{workspace:string;role
   useEffect(()=>{void load()},[load]);
   async function archive(item:InboxItem){if(!window.confirm("确认归档这条收集内容？归档后不会出现在待整理列表。"))return;try{await api.archiveInbox(workspace,item.id);await load()}catch(err){setError(err instanceof Error?err.message:"归档失败")}}
   async function process(item:InboxItem){setItems(v=>v.map(candidate=>candidate.id===item.id?{...candidate,processing_state:"processing"}:candidate));try{const queued=await api.processInbox(workspace,item.id);await waitForTask(workspace,queued.job_id);await load()}catch(err){setError(err instanceof Error?err.message:"自动处理失败");await load()}}
-  return <section className="inbox-page">
-    <header className="page-heading"><div><span className="eyebrow">INBOX</span><h1>收件箱</h1><p>快速捕获零散想法和链接，再把值得保留的内容整理成草稿。</p></div><label className="state-filter"><span>显示状态</span><select value={state} onChange={e=>setState(e.target.value)}><option value="pending">待整理</option><option value="converted">已转换</option><option value="archived">已归档</option></select></label></header>
+  return <WorkspacePage className="inbox-page" eyebrow="INBOX" title="收件箱" description="快速捕获零散想法和链接，再把值得保留的内容整理成草稿。" actions={<label className="state-filter"><span>显示状态</span><select value={state} onChange={e=>setState(e.target.value)}><option value="pending">待整理</option><option value="converted">已转换</option><option value="archived">已归档</option></select></label>}>
     {canEdit&&<CaptureForm workspace={workspace} onCaptured={item=>{if(state==="pending")setItems(v=>[item,...v])}}/>}
     {error&&<div className="inline-error" role="alert"><span>{error}</span><button onClick={()=>void load()}>重试</button></div>}
     <div className="inbox-list" aria-busy={loading}>
@@ -22,5 +22,5 @@ export function InboxPanel({workspace,role,onOpenContent}:{workspace:string;role
       </article>)}
     </div>
     {converting&&<ConvertDialog workspace={workspace} item={converting} onClose={()=>setConverting(undefined)} onConverted={id=>{setConverting(undefined);onOpenContent(id)}}/>}
-  </section>
+  </WorkspacePage>
 }
