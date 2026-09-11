@@ -7,7 +7,7 @@ export function ProviderSettingsForm({workspace,storage,setStorage,ai,setAI,canE
  const [accessKey,setAccessKey]=useState(""),[secretKey,setSecretKey]=useState(""),[storageProbe,setStorageProbe]=useState("");
  const setS=(key:keyof StorageSettings,value:unknown)=>setStorage({...storage,[key]:value});
  return <>
-  <SettingsSection title="对象存储" description="新上传使用当前配置；旧文件继续绑定原有 Provider。" canEdit={canEdit} onSave={async()=>{const saved=await api.saveStorage(workspace,{...storage,access_key:accessKey,secret_key:secretKey});setStorage(saved);setAccessKey("");setSecretKey("")}}>
+  <SettingsSection id="settings-storage" title="对象存储" description="新上传使用当前配置；旧文件继续绑定原有 Provider。" canEdit={canEdit} onSave={async()=>{const saved=await api.saveStorage(workspace,{...storage,access_key:accessKey,secret_key:secretKey});setStorage(saved);setAccessKey("");setSecretKey("")}}>
    <Field label="Provider"><select disabled={!canEdit} value={storage.provider} onChange={e=>setS("provider",e.target.value)}><option value="filesystem">本地文件系统</option><option value="oss">阿里云 OSS</option><option value="s3">S3</option><option value="r2">Cloudflare R2</option></select></Field>
    {storage.provider==="filesystem"?<Field label="存储子目录" hint="只能使用部署时配置的存储根目录或其子目录。"><input disabled={!canEdit} value={storage.base_path} onChange={e=>setS("base_path",e.target.value)}/></Field>:<>
     <Field label="Endpoint"><input disabled={!canEdit} value={storage.endpoint} onChange={e=>setS("endpoint",e.target.value)}/></Field><Field label="Region"><input disabled={!canEdit} value={storage.region} onChange={e=>setS("region",e.target.value)}/></Field><Field label="Bucket"><input disabled={!canEdit} value={storage.bucket} onChange={e=>setS("bucket",e.target.value)}/></Field>

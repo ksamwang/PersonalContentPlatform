@@ -16,7 +16,7 @@ export function AIProviderSettings({workspace,ai,setAI,canEdit}:{workspace:strin
 
   function updateBaseURL(value:string){setAI({...ai,base_url:value});setModels([]);setModelState("idle");setModelMessage("修改连接信息后，请重新获取模型。")}
   function updateAPIKey(value:string){setAPIKey(value);setModels([]);setModelState("idle");setModelMessage("输入新密钥后，请获取模型。")}
-  return <SettingsSection title="AI Provider" description="支持 OpenAI / Anthropic 兼容接口；模型列表由 Provider 端点提供。" canEdit={canEdit} onSave={async()=>{
+  return <SettingsSection id="settings-ai" title="AI Provider" description="支持 OpenAI / Anthropic 兼容接口；模型列表由 Provider 端点提供。" canEdit={canEdit} onSave={async()=>{
     if(!ai.model)throw new Error("请先获取并选择默认模型")
     const saved=await api.saveAI(workspace,{provider:ai.provider,base_url:ai.base_url,model:ai.model,purpose_models:ai.purpose_models,api_key:apiKey||undefined});setAI(saved);setAPIKey("");setProbe("")
   }}>

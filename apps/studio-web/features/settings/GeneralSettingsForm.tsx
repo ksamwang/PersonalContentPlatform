@@ -4,7 +4,7 @@ import { Field, SettingsSection } from "./SettingsSection";
 export function GeneralSettingsForm({value,setValue,save,canEdit}:{value:GeneralSettings;setValue:(v:GeneralSettings)=>void;save:<K extends keyof GeneralSettings>(s:K)=>Promise<void>;canEdit:boolean}){
  const set=<K extends keyof GeneralSettings>(section:K,key:keyof GeneralSettings[K],next:unknown)=>setValue({...value,[section]:{...value[section],[key]:next}});
  return <>
-  <SettingsSection title="工作区" description="工作区身份、语言和时间显示规则。" canEdit={canEdit} onSave={()=>save("workspace")}>
+  <SettingsSection id="settings-workspace" title="工作区" description="工作区身份、语言和时间显示规则。" canEdit={canEdit} onSave={()=>save("workspace")}>
    <Field label="名称"><input disabled={!canEdit} value={value.workspace.name} onChange={e=>set("workspace","name",e.target.value)}/></Field>
    <Field label="Slug" hint="用于公开 API 路径，修改前请确认外部链接。"><input disabled={!canEdit} value={value.workspace.slug} onChange={e=>set("workspace","slug",e.target.value)}/></Field>
    <Field label="默认语言"><select disabled={!canEdit} value={value.workspace.default_locale} onChange={e=>set("workspace","default_locale",e.target.value)}>{value.workspace.supported_locales.map(v=><option key={v}>{v}</option>)}</select></Field>
