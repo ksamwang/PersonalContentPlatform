@@ -1,0 +1,297 @@
+/* Compact editorial rhythm for the Studio shell and feature workspaces. */
+.workspace {
+  padding: clamp(16px, 1.35vw, 24px);
+}
+
+.topbar {
+  margin-bottom: 12px;
+}
+
+.topbar h1 {
+  margin-top: 5px;
+  font-size: clamp(1.75rem, 2vw, 2.05rem);
+  letter-spacing: -.025em;
+}
+
+.content-filters {
+  margin-bottom: 10px;
+}
+
+.studio-grid {
+  grid-template-columns: 248px minmax(0, 1fr);
+  border-radius: 10px;
+}
+
+.pane-meta {
+  height: 48px;
+}
+
+.content-row,
+.content-row-open {
+  min-height: 76px;
+}
+
+.editor-panel {
+  padding: 18px clamp(22px, 2.5vw, 42px) 26px;
+}
+
+.title-input {
+  font-size: clamp(2.35rem, 3.45vw, 3.8rem);
+}
+
+.assets-page,
+.publication-page {
+  width: min(1240px, 100%);
+  margin-inline: 0;
+  padding-bottom: 40px;
+}
+
+.collections-page,
+.knowledge-page,
+.ai-page {
+  width: min(1180px, 100%);
+  margin-inline: 0;
+  padding-bottom: 40px;
+}
+
+.discover-page,
+.migration-page {
+  width: min(1100px, 100%);
+  margin-inline: 0;
+  padding-bottom: 40px;
+}
+
+.settings-page,
+.inbox-page {
+  width: min(1040px, 100%);
+  margin-inline: 0;
+  padding-bottom: 40px;
+}
+
+.page-heading,
+.settings-heading {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+}
+
+.page-heading h1,
+.settings-heading h1 {
+  margin: 5px 0 7px;
+  font-size: clamp(2.25rem, 3.25vw, 3.15rem);
+  letter-spacing: -.035em;
+}
+
+.page-heading p,
+.settings-heading p {
+  max-width: 650px;
+  font-size: .92rem;
+}
+
+.heading-actions {
+  gap: 8px;
+}
+
+.primary,
+.secondary {
+  box-shadow: none;
+}
+
+.settings-card,
+.capture-card,
+.collections-grid,
+.asset-workspace,
+.discover-results,
+.rag-panel,
+.publication-table,
+.import-card,
+.export-grid a,
+.channel-grid article {
+  border-radius: 9px;
+  box-shadow: none;
+}
+
+/* Knowledge and AI use the same restrained, line-led language as the editor. */
+.knowledge-page,
+.ai-page {
+  --feature-rule: color-mix(in srgb, var(--text) 18%, var(--border));
+}
+
+.knowledge-page .page-heading,
+.ai-page .page-heading {
+  position: relative;
+  border-bottom-color: var(--feature-rule);
+}
+
+.knowledge-page .page-heading::after,
+.ai-page .page-heading::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  width: 72px;
+  height: 2px;
+  background: var(--accent);
+}
+
+.knowledge-grid {
+  min-height: 350px;
+  grid-template-columns: 250px minmax(0, 1fr);
+  border-radius: 8px;
+}
+
+.entity-index label {
+  padding: 10px;
+}
+
+.entity-index > button {
+  min-height: 58px;
+  padding: 8px 12px;
+}
+
+.entity-index > button > svg {
+  width: 17px;
+  color: var(--muted);
+}
+
+.entity-index > button.active {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.entity-detail {
+  padding: 20px 22px;
+}
+
+.entity-detail h2 {
+  margin-top: 2px;
+  font-family: Newsreader, "Noto Serif SC", serif;
+  font-size: 1.65rem;
+  font-weight: 500;
+}
+
+.entity-fields {
+  margin: 17px 0;
+}
+
+.knowledge-subsection {
+  padding: 14px 0;
+}
+
+.knowledge-create {
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.mention-review {
+  margin-top: 14px;
+  border-radius: 8px;
+}
+
+.mention-review > header,
+.suggestion-review > header,
+.ai-runs > header {
+  padding: 14px 16px;
+}
+
+.mention-review h2,
+.suggestion-review h2,
+.ai-runs h2 {
+  font-family: Newsreader, "Noto Serif SC", serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+}
+
+.mention-review .collection-empty,
+.suggestion-review .collection-empty,
+.ai-runs .collection-empty {
+  min-height: 130px;
+}
+
+.ai-generator {
+  grid-template-columns: minmax(220px, .85fr) minmax(260px, 1.25fr) 150px auto;
+  padding: 14px 16px;
+  border-radius: 8px;
+}
+
+.ai-generator > div > svg {
+  width: 20px;
+}
+
+.ai-generator select {
+  border-radius: 7px;
+}
+
+.suggestion-review,
+.ai-runs {
+  margin-top: 14px;
+  border-radius: 8px;
+}
+
+.suggestion-list > article {
+  padding: 14px 16px;
+}
+
+.suggestion-list pre {
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.ai-runs article {
+  min-height: 56px;
+  padding: 8px 16px;
+}
+
+@media (max-width: 1100px) {
+  .assets-page,
+  .collections-page,
+  .knowledge-page,
+  .ai-page,
+  .discover-page,
+  .publication-page,
+  .migration-page,
+  .settings-page,
+  .inbox-page {
+    width: 100%;
+  }
+
+  .ai-generator {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ai-generator > div {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    padding: 18px;
+  }
+
+  .studio-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .page-heading h1,
+  .settings-heading h1 {
+    font-size: clamp(2.1rem, 10vw, 2.75rem);
+  }
+
+  .knowledge-grid,
+  .ai-generator {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace {
+    padding: 14px;
+  }
+
+  .page-heading,
+  .settings-heading {
+    margin-bottom: 12px;
+  }
+}
