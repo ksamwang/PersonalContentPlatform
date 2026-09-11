@@ -87,17 +87,6 @@ a:focus-visible {
   position: relative;
   overflow: hidden;
 }
-.hero:after {
-  content: "";
-  position: absolute;
-  width: clamp(140px, 20vw, 300px);
-  aspect-ratio: 1;
-  border: 1px solid var(--accent);
-  border-radius: 50%;
-  right: 7vw;
-  top: 14%;
-  opacity: 0.65;
-}
 .kicker {
   font-size: 0.72rem;
   letter-spacing: 0.18em;
@@ -251,10 +240,6 @@ footer {
   }
   .hero {
     min-height: 72dvh;
-  }
-  .hero:after {
-    top: 8%;
-    right: -50px;
   }
   .empty-public,
   footer {

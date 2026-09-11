@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { SiteHeader } from "../../components/SiteHeader";
 import { getPublicSettings, listCollections, listPages, listTags } from "../../lib/content";
 import { ContentCards } from "../../components/ContentCards";
+import { HeroOrbit } from "../../components/HeroOrbit";
 
 export default async function Home({
   params,
@@ -44,6 +45,7 @@ export default async function Home({
                 : "Essays and notes on making, technology, and lived practice—revised, connected, and rediscovered over time.")}
             </p>
           </div>
+          <HeroOrbit locale={locale} publicationCount={items.length} collectionCount={collections.length} year={items[0]?new Date(items[0].published_at).getFullYear():new Date().getFullYear()}/>
         </section>
         <section className="index">
           <div className="section-heading">
