@@ -57,8 +57,8 @@ Compose 只向宿主回环地址开放两个端口，不占用宝塔的 80/443�
 
 | 宝塔网站 | 反向代理目标 |
 | --- | --- |
-| `loshin.org` | `http://127.0.0.1:3000` |
-| `studio.loshin.org` | `http://127.0.0.1:3001` |
+| `loshin.org` | `http://127.0.0.1:23000` |
+| `studio.loshin.org` | `http://127.0.0.1:23001` |
 
 两个网站都申请 HTTPS，并开启 HTTP 跳转 HTTPS。Studio 网站建议在 Nginx 配置中增加：
 
