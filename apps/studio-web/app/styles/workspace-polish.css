@@ -500,6 +500,11 @@
   align-items: start;
 }
 
+.workspace-page.settings-page {
+  width: min(1240px, 100%);
+  margin-inline: auto;
+}
+
 .settings-nav {
   position: sticky;
   top: 0;
@@ -527,7 +532,7 @@
 .settings-content {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -555,6 +560,60 @@
 
 .settings-fields {
   gap: 15px;
+}
+
+.settings-card-workspace .settings-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-card-workspace .settings-field:nth-child(4) {
+  grid-column: span 2;
+}
+
+.settings-card-site .settings-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-auth-methods {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settings-auth-methods .settings-check {
+  min-height: 72px;
+  padding: 12px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.settings-auth-methods .settings-check input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.settings-auth-methods .settings-check span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.settings-auth-methods .settings-check small {
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.settings-auth-options {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+  padding-top: 4px;
 }
 
 .settings-field input,
@@ -706,10 +765,6 @@
 }
 
 @media (max-width: 1500px) {
-  .settings-content {
-    grid-template-columns: 1fr;
-  }
-
   .settings-card-wide,
   .settings-provider-group {
     grid-column: 1;
@@ -750,6 +805,17 @@
 
   .discover-layout {
     grid-template-columns: 1fr;
+  }
+
+  .settings-card-workspace .settings-fields,
+  .settings-card-site .settings-fields,
+  .settings-auth-methods,
+  .settings-auth-options {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-card-workspace .settings-field:nth-child(4) {
+    grid-column: auto;
   }
 
   .collections-grid,

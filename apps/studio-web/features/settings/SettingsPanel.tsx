@@ -19,7 +19,7 @@ export function SettingsPanel({workspace,role}:{workspace:string;role:string}){
   <div className="settings-layout">
    <nav className="settings-nav" aria-label="设置目录">
     <a href="#settings-workspace">工作区与站点</a>
-    <a href="#settings-security">登录安全</a>
+    <a href="#settings-auth">登录与安全</a>
     <a href="#settings-storage">对象存储</a>
     <a href="#settings-ai">AI 创作</a>
     <a href="#settings-embedding">语义检索</a>
