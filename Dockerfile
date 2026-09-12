@@ -8,7 +8,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/api ./c
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/healthcheck ./cmd/healthcheck
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM alpine:3.22
+RUN apk add --no-cache ca-certificates
 COPY --from=build /out/ /app/
-USER nonroot:nonroot
 ENTRYPOINT ["/app/api"]

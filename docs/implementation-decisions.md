@@ -4,7 +4,7 @@
 
 - 登录：邮箱密码和 Passkey。
 - 开发环境：Windows；生产目标：Debian Linux。
-- 部署：生产环境不使用 Docker 或 systemd unit；在 Windows 交叉编译 Go Linux 可执行文件，宝塔管理进程守护、域名、HTTPS、反向代理和 Next.js 前端。
+- 部署：Docker Compose 运行 PostgreSQL、API、Worker、Studio 和 Public Web；宝塔只管理域名、HTTPS 和反向代理，不使用 systemd unit。
 - 对象存储：Filesystem（本地）、S3、Cloudflare R2、阿里云 OSS。
 - 首版内容：Article、Note、Page；首版语言：`zh-CN`、`en`。
 - 首版渠道：Website 与 RSS。

@@ -6,6 +6,8 @@ COPY apps/public-web/package.json apps/public-web/package.json
 RUN npm ci
 COPY apps ./apps
 ARG WEB_APP
+ARG API_ORIGIN=http://api:8080
+ENV API_ORIGIN=${API_ORIGIN}
 RUN npm run build -w ${WEB_APP}
 
 FROM node:24-alpine
@@ -14,5 +16,5 @@ COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps ./apps
 ARG WEB_APP
-ENV WEB_APP=${WEB_APP} NODE_ENV=production
+ENV WEB_APP=${WEB_APP} NODE_ENV=production HOSTNAME=0.0.0.0
 CMD npm run start -w ${WEB_APP}

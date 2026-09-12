@@ -9,7 +9,7 @@ apps/                 Studio 与 Public 两个 Next.js 应用
 cmd/                  API、Worker、迁移和容器健康检查入口
 internal/<module>/    domain/application/ports/infrastructure/transport 分层模块
 internal/platform/    配置、数据库、迁移、Outbox 等平台能力
-deploy/               宝塔部署配置与历史 Docker 配置
+deploy/               宝塔反向代理与 Docker Compose 部署配置
 docs/                 架构决策和运维 Runbook
 scripts/              Windows 验证及 Linux 交叉编译脚本
 ```
@@ -74,4 +74,4 @@ GET    /v1/workspaces/{workspaceID}/exports/manifest.json
 
 ## 部署
 
-生产目标为 Debian Linux，不依赖 Docker。API、Worker 和迁移器在 Windows 交叉编译为 Linux `amd64` 可执行文件，宝塔负责进程守护、域名、HTTPS、反向代理及两个 Next.js 项目。构建命令、目录结构和上线步骤见 [deploy/README.md](deploy/README.md)，备份恢复与故障处理见 [docs/runbooks](docs/runbooks)。
+生产环境使用 Docker Compose 运行 PostgreSQL + pgvector、API、Worker、Studio 和 Public Web，Node.js 24 固定在前端镜像内；宝塔负责域名、HTTPS 和反向代理。Windows 执行 `deploy/build.ps1` 可生成完整 Docker 部署包。具体步骤见 [deploy/README.md](deploy/README.md)，备份恢复与故障处理见 [docs/runbooks](docs/runbooks)。
