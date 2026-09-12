@@ -134,6 +134,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  loginTOTP: (email:string,code:string) => request<Principal>("/v1/auth/totp/login", {method:"POST",body:JSON.stringify({email,code})}),
   logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
   totpStatus: () => request<{enabled:boolean}>("/v1/auth/totp"),
   setupTOTP: () => request<TOTPEnrollment>("/v1/auth/totp/setup", {method:"POST"}),

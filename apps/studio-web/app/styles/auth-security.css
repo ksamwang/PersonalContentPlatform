@@ -21,6 +21,11 @@
 .totp-disable { max-width: 560px; }
 .totp-disable .settings-field { margin-top: 18px; }
 .totp-settings button { cursor: pointer; }
+.auth-method-tabs { margin: -6px 0 20px; padding: 3px; border: 1px solid var(--border); border-radius: 9px; display: grid; grid-template-columns: 1fr 1fr; background: var(--surface-2); }
+.auth-method-tabs button { min-height: 40px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: .86rem; font-weight: 650; cursor: pointer; transition: background .18s ease,color .18s ease,box-shadow .18s ease; }
+.auth-method-tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(36,27,31,.08); }
+.auth-method-tabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.totp-login-form + .secondary,.auth-card form + .secondary { width: 100%; margin-top: 12px; }
 @media (prefers-color-scheme: dark) { .totp-badge.enabled { color: #7ddba2; } }
 @media (max-width: 700px) {
   .totp-summary { grid-template-columns: 44px minmax(0,1fr); }

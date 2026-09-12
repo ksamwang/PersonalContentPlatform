@@ -2,6 +2,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, Principal } from "../../lib/api";
 import { PasskeyLogin } from "./PasskeyButton";
+import { TOTPLogin } from "./TOTPLogin";
 export function AuthPanel({
   onAuthenticated,
 }: {
@@ -10,7 +11,8 @@ export function AuthPanel({
   const [setupRequired, setSetupRequired] = useState<boolean>(),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [email, setEmail] = useState("");
+    [email, setEmail] = useState(""),
+    [method, setMethod] = useState<"password" | "totp">("password");
   const checking = setupRequired === undefined;
   const setup = setupRequired === true;
   useEffect(() => {
@@ -51,7 +53,17 @@ export function AuthPanel({
           <h2>{checking ? "正在准备登录" : setup ? "创建个人空间" : "登录 Studio"}</h2>
           <p>{checking ? "正在检查当前实例的初始化状态…" : setup ? "完成一次初始化后，这个入口将自动隐藏。" : "继续整理、连接并发布你的内容。"}</p>
         </div>
-        {!checking && <form onSubmit={submit}>
+        {!checking && !setup && (
+          <div className="auth-method-tabs" role="tablist" aria-label="登录方式">
+            <button type="button" role="tab" aria-selected={method === "password"} onClick={() => { setError(""); setMethod("password"); }}>
+              密码
+            </button>
+            <button type="button" role="tab" aria-selected={method === "totp"} onClick={() => { setError(""); setMethod("totp"); }}>
+              动态码
+            </button>
+          </div>
+        )}
+        {!checking && (setup || method === "password") && <form onSubmit={submit}>
           {setup && (
             <label>
               显示名称
@@ -89,10 +101,13 @@ export function AuthPanel({
             {busy ? "处理中…" : setup ? "创建个人空间" : "进入 Studio"}
           </button>
         </form>}
+        {!checking && !setup && method === "totp" && (
+          <TOTPLogin email={email} setEmail={setEmail} onAuthenticated={onAuthenticated} />
+        )}
         {setupRequired === false && (
           <PasskeyLogin email={email} onAuthenticated={onAuthenticated} />
         )}
-        {setupRequired === false && <p className="auth-note">Passkey 可在登录后添加到当前设备。</p>}
+        {setupRequired === false && <p className="auth-note">三种登录方式彼此独立；TOTP 与 Passkey 可在登录后的设置中绑定。</p>}
       </section>
     </main>
   );
