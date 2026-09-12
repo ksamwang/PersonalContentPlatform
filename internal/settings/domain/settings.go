@@ -29,6 +29,7 @@ type SiteSettings struct {
 type AuthSettings struct {
 	PasswordLoginEnabled bool `json:"password_login_enabled"`
 	PasskeyEnabled       bool `json:"passkey_enabled"`
+	TOTPLoginEnabled     bool `json:"totp_login_enabled"`
 	SessionTTLHours      int  `json:"session_ttl_hours"`
 }
 

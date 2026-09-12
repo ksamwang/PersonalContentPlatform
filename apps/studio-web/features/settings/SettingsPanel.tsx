@@ -7,6 +7,7 @@ import { WebhookSettings } from "./WebhookSettings";
 import { EmbeddingSettingsForm } from "./EmbeddingSettingsForm";
 import { MediaProviderSettings } from "./MediaProviderSettings";
 import { WorkspacePage } from "../studio/WorkspacePage";
+import { TOTPSettings } from "./TOTPSettings";
 
 export function SettingsPanel({workspace,role}:{workspace:string;role:string}){
  const [general,setGeneral]=useState<GeneralSettings>(),[storage,setStorage]=useState<StorageSettings>(),[ai,setAI]=useState<AISettings>(),[embedding,setEmbedding]=useState<EmbeddingSettings>(),[media,setMedia]=useState<MediaSettings[]>(),[error,setError]=useState("");
@@ -18,6 +19,7 @@ export function SettingsPanel({workspace,role}:{workspace:string;role:string}){
   <div className="settings-layout">
    <nav className="settings-nav" aria-label="设置目录">
     <a href="#settings-workspace">工作区与站点</a>
+    <a href="#settings-security">登录安全</a>
     <a href="#settings-storage">对象存储</a>
     <a href="#settings-ai">AI 创作</a>
     <a href="#settings-embedding">语义检索</a>
@@ -26,6 +28,7 @@ export function SettingsPanel({workspace,role}:{workspace:string;role:string}){
    </nav>
    <div className="settings-content">
     <GeneralSettingsForm value={general} setValue={setGeneral} canEdit={canEdit} save={async section=>{const saved=await api.saveSettings(workspace,section,general[section]);setGeneral(saved)}}/>
+    <TOTPSettings canEdit={canEdit}/>
     <ProviderSettingsForm workspace={workspace} storage={storage} setStorage={setStorage} ai={ai} setAI={setAI} canEdit={canEdit}/>
     <div id="settings-embedding"><EmbeddingSettingsForm workspace={workspace} value={embedding} setValue={setEmbedding} canEdit={canEdit}/></div>
     <MediaProviderSettings workspace={workspace} values={media} setValues={setMedia} canEdit={canEdit}/>

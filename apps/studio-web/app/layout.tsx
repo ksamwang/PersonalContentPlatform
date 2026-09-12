@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./styles/editor-polish.css";
 import "./styles/workspace-polish.css";
+import "./styles/auth-security.css";
 export const metadata: Metadata = {
   title: "Content Studio",
   description: "Personal Content Platform Studio",

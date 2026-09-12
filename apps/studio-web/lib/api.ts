@@ -62,7 +62,7 @@ export type AssetUsage={id:string;owner_id:string;owner_title:string;role:string
 export type GeneralSettings = {
   workspace: { name: string; slug: string; default_locale: string; supported_locales: string[]; timezone: string };
   site: { name: string; public_url: string; description: string; about: string; footer: string; rss_enabled: boolean; theme:string; accent_color:string; share_footer:string };
-  auth: { password_login_enabled: boolean; passkey_enabled: boolean; session_ttl_hours: number };
+  auth: { password_login_enabled: boolean; passkey_enabled: boolean; totp_login_enabled: boolean; session_ttl_hours: number };
   publication: { default_channel: string; auto_publish: boolean };
 };
 export type StorageSettings = { id?: string; name: string; provider: "filesystem"|"s3"|"r2"|"oss"; endpoint: string; region: string; bucket: string; access_key_mask?: string; secret_key_set?: boolean; base_path: string; active?: boolean };
@@ -71,6 +71,7 @@ export type EmbeddingSettings={provider:string;base_url:string;api_key_mask?:str
 export type MediaSettings={purpose:"ocr"|"transcription";provider:string;base_url:string;api_key_mask?:string;api_key_set?:boolean;model:string};
 export type SaveAISettings = Pick<AISettings,"provider"|"base_url"|"model"|"purpose_models"> & {api_key?:string};
 export type WorkspaceSettings = { general: GeneralSettings; storage: StorageSettings|null; ai: AISettings; embedding:EmbeddingSettings; media:MediaSettings[]; can_edit: boolean };
+export type TOTPEnrollment = {secret:string;otpauth_uri:string;qr_data_url:string};
 export type WebhookEndpoint = {id:string;name:string;url:string;secret_set:boolean;enabled:boolean;event_types:string[]};
 export type InboxItem = { id:string; kind:"text"|"link"|"image"|"audio"|"file"; raw_text:string; source_url?:string; asset_id?:string; title:string; extracted_text:string; cover_url?:string; processing_state:"idle"|"processing"|"completed"|"failed"; processing_error:string; duplicate_of?:string; state:"pending"|"converted"|"archived"; converted_content_id?:string; created_at:string; updated_at:string };
 export type InboxConversion = { inbox_id:string; content_id:string; localization_id:string };
@@ -134,6 +135,10 @@ export const api = {
       body: JSON.stringify(input),
     }),
   logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
+  totpStatus: () => request<{enabled:boolean}>("/v1/auth/totp"),
+  setupTOTP: () => request<TOTPEnrollment>("/v1/auth/totp/setup", {method:"POST"}),
+  enableTOTP: (secret:string,code:string) => request<{enabled:boolean;recovery_codes:string[]}>("/v1/auth/totp/enable", {method:"POST",body:JSON.stringify({secret,code})}),
+  disableTOTP: (code:string) => request<void>("/v1/auth/totp/disable", {method:"POST",body:JSON.stringify({code})}),
   list: (ws: string,filters:Record<string,string>={}) => {
     const params=new URLSearchParams(Object.entries(filters).filter(([,value])=>value));
     return requestItems<Content>(`/v1/workspaces/${ws}/contents${params.size?`?${params}`:""}`);

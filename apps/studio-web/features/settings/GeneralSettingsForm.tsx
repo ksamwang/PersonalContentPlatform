@@ -25,6 +25,7 @@ export function GeneralSettingsForm({value,setValue,save,canEdit}:{value:General
   <SettingsSection title="登录与发布" description="登录方式、会话期限和默认发布行为。会话期限应用于后续新会话。" canEdit={canEdit} onSave={async()=>{await save("auth");await save("publication")}}>
    <label className="settings-check"><input disabled={!canEdit} type="checkbox" checked={value.auth.password_login_enabled} onChange={e=>set("auth","password_login_enabled",e.target.checked)}/>允许邮箱密码登录</label>
    <label className="settings-check"><input disabled={!canEdit} type="checkbox" checked={value.auth.passkey_enabled} onChange={e=>set("auth","passkey_enabled",e.target.checked)}/>允许 Passkey</label>
+   <label className="settings-check"><input disabled={!canEdit} type="checkbox" checked={value.auth.totp_login_enabled} onChange={e=>set("auth","totp_login_enabled",e.target.checked)}/>允许 TOTP 动态码直接登录</label>
    <Field label="会话有效期（小时）"><input disabled={!canEdit} type="number" min={1} max={8760} value={value.auth.session_ttl_hours} onChange={e=>set("auth","session_ttl_hours",Number(e.target.value))}/></Field>
    <Field label="默认发布渠道"><select disabled={!canEdit} value={value.publication.default_channel} onChange={e=>set("publication","default_channel",e.target.value)}><option value="website">网站</option><option value="rss">RSS</option></select></Field>
   </SettingsSection>

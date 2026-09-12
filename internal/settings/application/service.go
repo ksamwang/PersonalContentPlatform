@@ -153,7 +153,7 @@ func validateSection(section string, raw json.RawMessage) error {
 		if v.SessionTTLHours < 1 || v.SessionTTLHours > 8760 {
 			return fmt.Errorf("session TTL must be between 1 and 8760 hours")
 		}
-		if !v.PasswordLoginEnabled && !v.PasskeyEnabled {
+		if !v.PasswordLoginEnabled && !v.PasskeyEnabled && !v.TOTPLoginEnabled {
 			return fmt.Errorf("at least one login method must remain enabled")
 		}
 	case "publication":
