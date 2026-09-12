@@ -29,6 +29,7 @@ go.work.sum
 .env.*
 !.env.example
 deploy/secrets/
+deploy/output/
 
 # Frontend
 node_modules/

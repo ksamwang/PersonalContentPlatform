@@ -7,21 +7,29 @@
 - 域名、HTTPS、反向代理：由宝塔 Nginx 管理。
 - PostgreSQL：使用服务器上已有实例，不随应用打包。
 
-在 Windows 生成后端发布包：
+在 Windows 生成完整部署包：
 
 ```powershell
-.\scripts\package-baota.ps1
+.\deploy\build.ps1
 ```
 
-产物位于 `bin/release/pcplatform-<commit>.zip`，包含三个 Linux 可执行文件、校验和、宝塔环境变量示例和本说明。若只需要更新可执行文件，可运行 `scripts/build-linux.ps1`。
+产物位于 `deploy/output/pcplatform-<commit>.zip`。解压后已经是可整体上传到 `/www/wwwroot/pcplatform` 的目录，包含：
+
+- Studio 与 Public Web 的完整构建源码；
+- 根目录 `package.json` 和 `package-lock.json`；
+- 三个 Linux 可执行文件及 SHA-256 校验和；
+- 已按 `loshin.org` 填写的三个生产配置文件；
+- 前端一键构建脚本 `build-web.sh`；
+- `data/assets` 目录。
+
+部署包自动排除 Windows 的 `.next`、`node_modules`、`*.tsbuildinfo` 和开发说明文件。上传前只需要填写 `config/pcplatform.env` 中的数据库密码、`PASSWORD_PEPPER`、`PUBLIC_REVALIDATE_TOKEN`，并把同一个 Token 写入 `apps/public-web/.env.production`。更新已有服务器时保留服务器上的三个配置文件，不要被模板覆盖。
 
 在 Linux 上传并准备二进制：
 
 ```bash
-install -d /www/wwwroot/pcplatform/bin /www/wwwroot/pcplatform/config /www/wwwroot/pcplatform/data/assets
-install -m 755 pcp-api pcp-worker pcp-migrate /www/wwwroot/pcplatform/bin/
-install -m 640 pcplatform.env /www/wwwroot/pcplatform/config/pcplatform.env
 cd /www/wwwroot/pcplatform
+chmod 755 bin/pcp-api bin/pcp-worker bin/pcp-migrate
+chmod 640 config/pcplatform.env apps/studio-web/.env.production apps/public-web/.env.production
 APP_ENV_FILE=/www/wwwroot/pcplatform/config/pcplatform.env ./bin/pcp-migrate up
 ```
 
@@ -34,15 +42,10 @@ APP_ENV_FILE=/www/wwwroot/pcplatform/config/pcplatform.env ./bin/pcp-migrate up
 
 两者都设置开机启动和异常自动重启。API 监听 `127.0.0.1:8080`，Worker 不配置公网端口。
 
-前端源码通过 Git 更新或单独上传，不包含在后端 ZIP 中。构建前先将两个环境变量示例复制到应用目录并填写实际域名和 Token。前端必须在 Linux 构建，避免 Windows 的 Next.js/Sharp 原生依赖进入 Linux 产物：
+前端源码已经包含在完整部署包中。前端必须在 Linux 构建，避免 Windows 的 Next.js/Sharp 原生依赖进入 Linux 产物：
 
 ```bash
-cp deploy/baota/studio.env.example apps/studio-web/.env.production
-cp deploy/baota/public-web.env.example apps/public-web/.env.production
-npm ci
-npm run build:web
-cp -a apps/studio-web/.next/static apps/studio-web/.next/standalone/apps/studio-web/.next/
-cp -a apps/public-web/.next/static apps/public-web/.next/standalone/apps/public-web/.next/
+bash build-web.sh
 ```
 
 在宝塔中建立两个 Node 项目，共用项目目录，分别使用对应环境变量示例中的配置：
