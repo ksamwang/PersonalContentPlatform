@@ -3,6 +3,7 @@ import "./globals.css";
 import "./styles/editor-polish.css";
 import "./styles/workspace-polish.css";
 import "./styles/auth-security.css";
+import "./styles/studio-workbench.css";
 export const metadata: Metadata = {
   title: "Content Studio",
   description: "Personal Content Platform Studio",

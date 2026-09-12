@@ -1,7 +1,10 @@
 .totp-settings { overflow: hidden; }
 .totp-badge { min-height: 32px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .78rem; white-space: nowrap; }
 .totp-badge.enabled { border-color: color-mix(in srgb, #157347 35%, var(--border)); background: color-mix(in srgb, #157347 8%, var(--surface)); color: #157347; }
-.totp-summary { min-height: 88px; display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 16px; }
+.totp-summary,.passkey-summary { min-height: 88px; display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 16px; }
+.passkey-summary { margin-bottom: 2px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.passkey-summary + .totp-summary { padding-top: 16px; }
+.passkey-summary p { max-width: 64ch; margin: 5px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.55; }
 .totp-summary-icon { width: 48px; height: 48px; border: 1px solid var(--border); border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--accent); }
 .totp-summary p,.totp-disable p,.totp-success p { max-width: 64ch; margin: 5px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.55; }
 .totp-enrollment { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 28px; align-items: start; }
@@ -28,8 +31,8 @@
 .totp-login-form + .secondary,.auth-card form + .secondary { width: 100%; margin-top: 12px; }
 @media (prefers-color-scheme: dark) { .totp-badge.enabled { color: #7ddba2; } }
 @media (max-width: 700px) {
-  .totp-summary { grid-template-columns: 44px minmax(0,1fr); }
-  .totp-summary > button { grid-column: 1/-1; width: 100%; }
+  .totp-summary,.passkey-summary { grid-template-columns: 44px minmax(0,1fr); }
+  .totp-summary > button,.passkey-summary > button { grid-column: 1/-1; width: 100%; }
   .totp-enrollment { grid-template-columns: 1fr; }
   .totp-qr { width: min(220px,100%); margin: 0 auto; }
   .recovery-code-grid { grid-template-columns: 1fr; }

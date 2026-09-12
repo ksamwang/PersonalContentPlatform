@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { api, Content, Principal } from "../../lib/api";
 import { AuthPanel } from "../auth/AuthPanel";
-import { AddPasskey } from "../auth/PasskeyButton";
 import { AssetsPanel } from "../assets/AssetsPanel";
 import { EditorPanel } from "../editor/EditorPanel";
 import { ContentList } from "./ContentList";
@@ -98,7 +97,7 @@ export function StudioApp() {
           <PublicationPanel workspace={user.WorkspaceID} role={user.Role} onOpenContent={async id=>{try{setSelected(await api.content(user.WorkspaceID,id));setView("content")}catch(error){setLoadError(error instanceof Error?error.message:"内容加载失败")}}}/>
         ) : view === "migration" ? (
           <MigrationPanel workspace={user.WorkspaceID} role={user.Role}/>
-        ) : (<>
+        ) : (<section className="content-workbench">
         <header className="topbar">
           <div>
             <span className="eyebrow">YOUR LIBRARY</span>
@@ -115,7 +114,6 @@ export function StudioApp() {
                 placeholder="搜索内容…"
               />
             </label>
-            <AddPasskey />
             <CreateContent
               workspace={user.WorkspaceID}
               onCreated={(c) => {
@@ -166,7 +164,7 @@ export function StudioApp() {
             </section>
           )}
         </div>
-        </>)}
+        </section>)}
       </main>
     </div>
   );

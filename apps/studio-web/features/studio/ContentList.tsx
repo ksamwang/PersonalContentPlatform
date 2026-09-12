@@ -1,6 +1,7 @@
 import { Archive, ArchiveRestore, FileText, StickyNote, PanelTop, Trash2 } from "lucide-react";
 import { Content } from "../../lib/api";
 const icons = { article: FileText, note: StickyNote, page: PanelTop };
+const stateNames:Record<string,string>={draft:"草稿",ready:"待发布",published:"已发布",archived:"已归档"};
 export function ContentList({
   items,
   selected,
@@ -46,12 +47,12 @@ export function ContentList({
               <Icon aria-hidden size={18} />
             </span>
             <span className="row-main">
-              <strong>{revision?.title || "无标题"}</strong>
-              <small>
-                {locale?.slug} · {locale?.locale}
-              </small>
+              <strong title={revision?.title || "无标题"}>{revision?.title || "无标题"}</strong>
+              <span className="row-meta">
+                <small title={locale?.slug}>{locale?.slug || "未设置链接"} · {locale?.locale}</small>
+                <span className={`status ${locale?.state}`}>{stateNames[locale?.state]??locale?.state}</span>
+              </span>
             </span>
-            <span className={`status ${locale?.state}`}>{locale?.state}</span>
           </button>
           {canEdit&&<span className="content-row-actions">{archived?<button aria-label={`恢复 ${revision?.title||"无标题"}`} title="恢复" onClick={()=>onRestore?.(item)}><ArchiveRestore/></button>:<button aria-label={`归档 ${revision?.title||"无标题"}`} title="归档" onClick={()=>onArchive?.(item)}><Archive/></button>}<button className="danger-icon" aria-label={`删除 ${revision?.title||"无标题"}`} title="移至回收站" onClick={()=>onDelete?.(item)}><Trash2/></button></span>}
           </article>

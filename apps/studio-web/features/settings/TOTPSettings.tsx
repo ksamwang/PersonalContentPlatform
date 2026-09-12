@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, KeyRound, ShieldCheck } from "lucide-react";
 import { api, TOTPEnrollment } from "../../lib/api";
+import { AddPasskey } from "../auth/PasskeyButton";
 
 type View = "status" | "enroll" | "recovery" | "disable";
 
@@ -54,15 +55,19 @@ export function TOTPSettings({canEdit}:{canEdit:boolean}) {
 
   return <section className="settings-card settings-card-wide totp-settings" id="settings-security">
     <header>
-      <div><h2>登录安全</h2><p>绑定验证器后，可只使用邮箱和动态码登录，不需要密码。</p></div>
+      <div><h2>登录安全</h2><p>管理当前账号的 Passkey 与 TOTP 动态码凭证。</p></div>
       <span className={`totp-badge ${enabled?"enabled":""}`}><ShieldCheck aria-hidden size={16}/>{loading?"读取中":enabled?"已绑定":"未绑定"}</span>
     </header>
 
-    {view==="status"&&<div className="totp-summary">
+    {view==="status"&&<><div className="passkey-summary">
+      <div className="totp-summary-icon"><KeyRound aria-hidden/></div>
+      <div><strong>Passkey</strong><p>为当前设备添加通行密钥，使用生物识别或系统安全验证直接登录。</p></div>
+      {canEdit&&<AddPasskey/>}
+    </div><div className="totp-summary">
       <div className="totp-summary-icon"><KeyRound aria-hidden/></div>
       <div><strong>{enabled?"动态码登录已就绪":"添加 TOTP 验证器"}</strong><p>{enabled?"验证器每 30 秒生成一个 6 位动态码。登录开关由下方“登录与发布”设置控制。":"支持常见验证器应用，绑定后仍可继续使用密码或 Passkey。"}</p></div>
       {canEdit&&(enabled?<button className="danger" onClick={()=>{setCode("");setMessage("");setView("disable")}}>停用</button>:<button className="primary compact" disabled={loading||busy} onClick={()=>void begin()}>{busy?"准备中…":"开始绑定"}</button>)}
-    </div>}
+    </div></>}
 
     {view==="enroll"&&enrollment&&<div className="totp-enrollment">
       <div className="totp-qr"><img src={enrollment.qr_data_url} width={200} height={200} alt="TOTP 验证器绑定二维码"/></div>
