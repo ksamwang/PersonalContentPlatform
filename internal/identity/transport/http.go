@@ -27,12 +27,17 @@ func (h *HTTP) Register(r chi.Router) {
 		r.Get("/setup-status", h.setupStatus)
 		r.Post("/setup", h.setup)
 		r.Post("/login", h.login)
+		r.Post("/totp/login", h.loginTOTP)
 		r.Post("/logout", h.logout)
 		r.Post("/passkeys/login/options", h.beginPasskeyLogin)
 		r.Post("/passkeys/login/verify", h.finishPasskeyLogin)
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireSession)
 			r.Get("/me", h.me)
+			r.Get("/totp", h.totpStatus)
+			r.Post("/totp/setup", h.setupTOTP)
+			r.Post("/totp/enable", h.enableTOTP)
+			r.Post("/totp/disable", h.disableTOTP)
 			r.Post("/passkeys/register/options", h.beginPasskeyRegistration)
 			r.Post("/passkeys/register/verify", h.finishPasskeyRegistration)
 		})
@@ -105,6 +110,28 @@ func (h *HTTP) login(w http.ResponseWriter, r *http.Request) {
 	h.setCookie(w, token)
 	httpx.JSON(w, 200, p)
 }
+
+func (h *HTTP) loginTOTP(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Email string `json:"email"`
+		Code  string `json:"code"`
+	}
+	if err := httpx.Decode(w, r, &input); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	p, token, err := h.sessions.LoginWithTOTP(r.Context(), input.Email, input.Code, r.RemoteAddr, r.UserAgent())
+	if err != nil {
+		if errors.Is(err, application.ErrTOTPRateLimited) {
+			httpx.Error(w, http.StatusTooManyRequests, "totp_rate_limited", "尝试次数过多，请 5 分钟后再试")
+			return
+		}
+		httpx.Error(w, http.StatusUnauthorized, "invalid_totp", "邮箱或动态码不正确")
+		return
+	}
+	h.setCookie(w, token)
+	httpx.JSON(w, http.StatusOK, p)
+}
 func (h *HTTP) logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(h.cookieName); err == nil {
 		_ = h.sessions.Logout(r.Context(), cookie.Value)
@@ -115,6 +142,60 @@ func (h *HTTP) logout(w http.ResponseWriter, r *http.Request) {
 func (h *HTTP) me(w http.ResponseWriter, r *http.Request) {
 	p, _ := Principal(r.Context())
 	httpx.JSON(w, 200, p)
+}
+
+func (h *HTTP) totpStatus(w http.ResponseWriter, r *http.Request) {
+	p, _ := Principal(r.Context())
+	status, err := h.sessions.TOTPStatus(r.Context(), p.UserID)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "totp_status_failed", "无法读取动态码状态")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, status)
+}
+
+func (h *HTTP) setupTOTP(w http.ResponseWriter, r *http.Request) {
+	p, _ := Principal(r.Context())
+	enrollment, err := h.sessions.BeginTOTPEnrollment(p.Email)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "totp_setup_failed", "无法创建动态码配置")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, enrollment)
+}
+
+func (h *HTTP) enableTOTP(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Secret string `json:"secret"`
+		Code   string `json:"code"`
+	}
+	if err := httpx.Decode(w, r, &input); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	p, _ := Principal(r.Context())
+	codes, err := h.sessions.EnableTOTP(r.Context(), p.UserID, input.Secret, input.Code)
+	if err != nil {
+		httpx.Error(w, http.StatusUnprocessableEntity, "totp_verification_failed", "动态码验证失败")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"enabled": true, "recovery_codes": codes})
+}
+
+func (h *HTTP) disableTOTP(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Code string `json:"code"`
+	}
+	if err := httpx.Decode(w, r, &input); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	p, _ := Principal(r.Context())
+	if err := h.sessions.DisableTOTP(r.Context(), p.UserID, input.Code); err != nil {
+		httpx.Error(w, http.StatusUnprocessableEntity, "totp_verification_failed", "动态码或恢复码不正确")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type emailInput struct {

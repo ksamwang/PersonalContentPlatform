@@ -22,6 +22,6 @@ type Principal struct {
 	Email, DisplayName, Role string
 }
 type AuthPolicy struct {
-	PasswordLoginEnabled, PasskeyEnabled bool
-	SessionTTL                           time.Duration
+	PasswordLoginEnabled, PasskeyEnabled, TOTPLoginEnabled bool
+	SessionTTL                                             time.Duration
 }

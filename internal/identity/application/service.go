@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/ksamwang/PersonalContentPlatform/internal/identity/domain"
 	"github.com/ksamwang/PersonalContentPlatform/internal/identity/ports"
 	"github.com/ksamwang/PersonalContentPlatform/internal/platform/id"
@@ -19,10 +20,11 @@ type Service struct {
 	repo       ports.Repository
 	pepper     string
 	sessionTTL time.Duration
+	totpLimit  *totpAttemptLimiter
 }
 
 func NewService(repo ports.Repository, pepper string, sessionTTL time.Duration) *Service {
-	return &Service{repo: repo, pepper: pepper, sessionTTL: sessionTTL}
+	return &Service{repo: repo, pepper: pepper, sessionTTL: sessionTTL, totpLimit: newTOTPAttemptLimiter()}
 }
 
 func (s *Service) SetupRequired(ctx context.Context) (bool, error) {
@@ -79,11 +81,14 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent string) 
 	if err != nil || !policy.PasswordLoginEnabled {
 		return domain.Principal{}, "", ErrUnauthorized
 	}
+	return s.createSession(ctx, u.ID, policy.SessionTTL, userAgent)
+}
+func (s *Service) createSession(ctx context.Context, userID uuid.UUID, ttl time.Duration, userAgent string) (domain.Principal, string, error) {
 	token, hash, err := newToken()
 	if err != nil {
 		return domain.Principal{}, "", err
 	}
-	if err = s.repo.CreateSession(ctx, u.ID, hash, time.Now().Add(policy.SessionTTL), userAgent); err != nil {
+	if err = s.repo.CreateSession(ctx, userID, hash, time.Now().Add(ttl), userAgent); err != nil {
 		return domain.Principal{}, "", err
 	}
 	principal, err := s.repo.PrincipalBySessionHash(ctx, hash)

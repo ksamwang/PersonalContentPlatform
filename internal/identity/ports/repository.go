@@ -21,4 +21,10 @@ type Repository interface {
 	SaveCeremony(context.Context, uuid.UUID, uuid.UUID, string, json.RawMessage, time.Time) error
 	TakeCeremony(context.Context, uuid.UUID, string) (uuid.UUID, json.RawMessage, error)
 	SaveCredential(context.Context, uuid.UUID, webauthn.Credential) error
+	SaveTOTP(context.Context, uuid.UUID, []byte) error
+	TOTPSecretByUser(context.Context, uuid.UUID) ([]byte, error)
+	HasTOTP(context.Context, uuid.UUID) (bool, error)
+	DeleteTOTP(context.Context, uuid.UUID) error
+	ReplaceRecoveryCodes(context.Context, uuid.UUID, [][]byte) error
+	ConsumeRecoveryCode(context.Context, uuid.UUID, []byte) (bool, error)
 }

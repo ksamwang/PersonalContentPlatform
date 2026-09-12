@@ -59,9 +59,9 @@ func (r *Repository) UserByID(ctx context.Context, userID uuid.UUID) (domain.Use
 	return r.user(ctx, `u.id=$1`, userID)
 }
 func (r *Repository) AuthPolicyByUser(ctx context.Context, userID uuid.UUID, fallback time.Duration) (domain.AuthPolicy, error) {
-	v := domain.AuthPolicy{PasswordLoginEnabled: true, PasskeyEnabled: true, SessionTTL: fallback}
+	v := domain.AuthPolicy{PasswordLoginEnabled: true, PasskeyEnabled: true, TOTPLoginEnabled: true, SessionTTL: fallback}
 	var hours *int
-	err := r.db.QueryRow(ctx, `SELECT COALESCE((w.settings_json#>>'{auth,password_login_enabled}')::boolean,true),COALESCE((w.settings_json#>>'{auth,passkey_enabled}')::boolean,true),(w.settings_json#>>'{auth,session_ttl_hours}')::integer FROM memberships m JOIN workspaces w ON w.id=m.workspace_id WHERE m.user_id=$1 ORDER BY CASE m.role WHEN 'owner' THEN 1 WHEN 'editor' THEN 2 ELSE 3 END LIMIT 1`, userID).Scan(&v.PasswordLoginEnabled, &v.PasskeyEnabled, &hours)
+	err := r.db.QueryRow(ctx, `SELECT COALESCE((w.settings_json#>>'{auth,password_login_enabled}')::boolean,true),COALESCE((w.settings_json#>>'{auth,passkey_enabled}')::boolean,true),COALESCE((w.settings_json#>>'{auth,totp_login_enabled}')::boolean,true),(w.settings_json#>>'{auth,session_ttl_hours}')::integer FROM memberships m JOIN workspaces w ON w.id=m.workspace_id WHERE m.user_id=$1 ORDER BY CASE m.role WHEN 'owner' THEN 1 WHEN 'editor' THEN 2 ELSE 3 END LIMIT 1`, userID).Scan(&v.PasswordLoginEnabled, &v.PasskeyEnabled, &v.TOTPLoginEnabled, &hours)
 	if err != nil {
 		return v, err
 	}
@@ -134,6 +134,50 @@ func (r *Repository) SaveCredential(ctx context.Context, userID uuid.UUID, crede
 	}
 	_, err = r.db.Exec(ctx, `INSERT INTO webauthn_credentials(id,user_id,credential_json) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET credential_json=EXCLUDED.credential_json,last_used_at=now()`, credential.ID, userID, data)
 	return err
+}
+
+func (r *Repository) SaveTOTP(ctx context.Context, userID uuid.UUID, secret []byte) error {
+	_, err := r.db.Exec(ctx, `INSERT INTO user_totp_credentials(user_id,secret_ciphertext) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET secret_ciphertext=EXCLUDED.secret_ciphertext,enabled_at=now(),updated_at=now()`, userID, secret)
+	return err
+}
+
+func (r *Repository) TOTPSecretByUser(ctx context.Context, userID uuid.UUID) ([]byte, error) {
+	var secret []byte
+	err := r.db.QueryRow(ctx, `SELECT secret_ciphertext FROM user_totp_credentials WHERE user_id=$1`, userID).Scan(&secret)
+	return secret, err
+}
+
+func (r *Repository) HasTOTP(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM user_totp_credentials WHERE user_id=$1)`, userID).Scan(&exists)
+	return exists, err
+}
+
+func (r *Repository) DeleteTOTP(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM user_totp_credentials WHERE user_id=$1`, userID)
+	return err
+}
+
+func (r *Repository) ReplaceRecoveryCodes(ctx context.Context, userID uuid.UUID, hashes [][]byte) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, `DELETE FROM totp_recovery_codes WHERE user_id=$1`, userID); err != nil {
+		return err
+	}
+	for _, hash := range hashes {
+		if _, err = tx.Exec(ctx, `INSERT INTO totp_recovery_codes(user_id,code_hash) VALUES($1,$2)`, userID, hash); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+func (r *Repository) ConsumeRecoveryCode(ctx context.Context, userID uuid.UUID, hash []byte) (bool, error) {
+	result, err := r.db.Exec(ctx, `UPDATE totp_recovery_codes SET used_at=now() WHERE user_id=$1 AND code_hash=$2 AND used_at IS NULL`, userID, hash)
+	return result.RowsAffected() == 1, err
 }
 
 var _ pgx.Tx
