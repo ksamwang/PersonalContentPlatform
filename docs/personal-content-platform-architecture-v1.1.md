@@ -339,7 +339,7 @@ contracts/
 migrations/
   <module>/
 deploy/
-  compose/ caddy/ otel/
+  baota/
 docs/
   adr/ runbooks/ architecture/
 ```
@@ -968,18 +968,18 @@ type Publisher interface {
 ### 19.1 初始生产拓扑
 
 ```text
-Docker Compose
-  caddy             TLS / reverse proxy
-  public-web        Next.js
-  studio-web        Next.js
-  api               Go
-  worker-default    Go
-  worker-media      Go (resource limits)
-  postgres          PostgreSQL + pgvector
-  otel-collector    traces / metrics / logs
+Debian Linux + 宝塔
+  nginx             域名 / TLS / reverse proxy
+  public-web        Next.js standalone (Node.js)
+  studio-web        Next.js standalone (Node.js)
+  api               Windows 交叉编译的 Go Linux 二进制
+  worker            Windows 交叉编译的 Go Linux 二进制
+  postgres          服务器现有 PostgreSQL + pgvector
 
-External: S3/R2 object storage + CDN + AI/providers
+External: S3/R2/OSS object storage + CDN + AI/providers
 ```
+
+生产部署不依赖 Docker 或 systemd unit。宝塔负责 Go 进程守护、Nginx、证书及两个 Node 项目。Next.js 必须在 Linux 构建，避免将 Windows 平台原生依赖带入生产环境。
 
 ### 19.2 配置原则
 
@@ -987,7 +987,7 @@ External: S3/R2 object storage + CDN + AI/providers
 
 - 配置启动时强校验，打印去敏后的 effective config。
 
-- dev/staging/prod 使用同一镜像，不同配置；数据库和对象存储隔离。
+- dev/staging/prod 使用同一版本产物和不同配置；数据库和对象存储隔离。
 
 ### 19.3 可观测性
 
@@ -1034,7 +1034,7 @@ External: S3/R2 object storage + CDN + AI/providers
 
 ### 20.1 Phase 0：工程与架构地基（1–2 周）
 
-- Monorepo、CI、配置、OpenTelemetry、Docker Compose。
+- Monorepo、CI、配置、OpenTelemetry、原生发布包。
 
 - Workspace/Identity、objects 注册表、migration 规则。
 
@@ -1181,9 +1181,9 @@ External: S3/R2 object storage + CDN + AI/providers
 | Database            | PostgreSQL + pgvector   | 权威数据、FTS、Vector、Job                      |
 | Storage             | S3 / Cloudflare R2      | 原始与派生对象分前缀/桶治理                     |
 | Image / Video       | libvips / FFmpeg        | 独立 media worker                               |
-| Proxy / CDN         | Caddy + Cloudflare      | TLS、缓存、WAF                                  |
+| Proxy / CDN         | 宝塔 Nginx + Cloudflare | TLS、缓存、WAF                                  |
 | Observability       | OpenTelemetry           | 导出到可替换后端                                |
-| CI/CD               | GitHub Actions          | 测试、构建、迁移检查、镜像与部署                |
+| CI/CD               | GitHub Actions          | 测试、构建、迁移检查与发布包                    |
 
 ## 附录 B：事件目录（首批）
 

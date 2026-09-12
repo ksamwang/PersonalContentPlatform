@@ -1,5 +1,9 @@
+param(
+    [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\bin\linux-amd64')
+)
+
 $ErrorActionPreference = 'Stop'
-$output = Join-Path $PSScriptRoot '..\bin\linux-amd64'
+$output = [System.IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Force -Path $output | Out-Null
 $previousGOOS = $env:GOOS
 $previousGOARCH = $env:GOARCH
