@@ -20,6 +20,7 @@
 
 只需编辑根目录的 `.env`：
 
+- `DOCKER_REGISTRY`：默认 `docker.m.daocloud.io`，用于服务器无法访问 Docker Hub 的环境。
 - `POSTGRES_PASSWORD`：使用 URL 安全的随机密码，建议 `openssl rand -hex 24`。
 - `PASSWORD_PEPPER`：首次部署生成后固定保存，建议 `openssl rand -hex 32`。
 - `PUBLIC_REVALIDATE_TOKEN`：建议 `openssl rand -hex 32`。
@@ -38,9 +39,12 @@ WEBAUTHN_RP_ORIGINS=https://studio.loshin.org
 
 ```bash
 cd /www/wwwroot/pcplatform
+docker pull docker.m.daocloud.io/library/alpine:3.22
 docker compose --env-file .env -f deploy/compose/compose.yml config
 docker compose --env-file .env -f deploy/compose/compose.yml up -d --build
 ```
+
+第一条命令用于单独确认镜像仓库连通性。若它仍失败，应先查看完整错误和 `docker info` 中的 Registry Mirrors，不要连续重启相同构建。
 
 首次启动会按顺序完成：PostgreSQL 健康检查 → 数据库迁移 → API/Worker → 两个前端。PostgreSQL 数据和本地资产分别保存在 Docker named volume 中，重新构建容器不会删除数据。
 

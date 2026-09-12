@@ -1,4 +1,5 @@
-FROM node:24-alpine AS build
+ARG DOCKER_REGISTRY=docker.io
+FROM ${DOCKER_REGISTRY}/library/node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/studio-web/package.json apps/studio-web/package.json
@@ -10,7 +11,7 @@ ARG API_ORIGIN=http://api:8080
 ENV API_ORIGIN=${API_ORIGIN}
 RUN npm run build -w ${WEB_APP}
 
-FROM node:24-alpine
+FROM ${DOCKER_REGISTRY}/library/node:24-alpine
 WORKDIR /app
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
