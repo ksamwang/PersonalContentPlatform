@@ -34,6 +34,14 @@ func (r *Repository) Get(ctx context.Context, ws uuid.UUID) (domain.GeneralSetti
 	value := defaults(name, slug)
 	if len(raw) > 2 {
 		_ = json.Unmarshal(raw, &value)
+		var stored struct {
+			Auth map[string]json.RawMessage `json:"auth"`
+		}
+		if json.Unmarshal(raw, &stored) == nil {
+			if _, exists := stored.Auth["totp_login_enabled"]; !exists {
+				value.Auth.TOTPLoginEnabled = true
+			}
+		}
 	}
 	value.Workspace.Name, value.Workspace.Slug = name, slug
 	return value, nil
