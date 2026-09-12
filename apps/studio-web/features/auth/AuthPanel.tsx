@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { api, Principal } from "../../lib/api";
 import { PasskeyLogin } from "./PasskeyButton";
 export function AuthPanel({
@@ -7,10 +7,15 @@ export function AuthPanel({
 }: {
   onAuthenticated: (p: Principal) => void;
 }) {
-  const [setup, setSetup] = useState(false),
+  const [setupRequired, setSetupRequired] = useState<boolean>(),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [email, setEmail] = useState("");
+  const checking = setupRequired === undefined;
+  const setup = setupRequired === true;
+  useEffect(() => {
+    api.setupStatus().then(value => setSetupRequired(value.required)).catch(() => setSetupRequired(false));
+  }, []);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -41,15 +46,12 @@ export function AuthPanel({
         <p>捕获灵感、形成内容、连接知识，并以自己的方式发布。</p>
       </section>
       <section className="auth-card">
-        <div className="segmented" role="tablist">
-          <button aria-selected={!setup} onClick={() => setSetup(false)}>
-            登录
-          </button>
-          <button aria-selected={setup} onClick={() => setSetup(true)}>
-            首次设置
-          </button>
+        <div className="auth-card-heading">
+          <span className="eyebrow">{checking ? "OPENING" : setup ? "FIRST SETUP" : "WELCOME BACK"}</span>
+          <h2>{checking ? "正在准备登录" : setup ? "创建个人空间" : "登录 Studio"}</h2>
+          <p>{checking ? "正在检查当前实例的初始化状态…" : setup ? "完成一次初始化后，这个入口将自动隐藏。" : "继续整理、连接并发布你的内容。"}</p>
         </div>
-        <form onSubmit={submit}>
+        {!checking && <form onSubmit={submit}>
           {setup && (
             <label>
               显示名称
@@ -86,11 +88,11 @@ export function AuthPanel({
           <button className="primary" disabled={busy}>
             {busy ? "处理中…" : setup ? "创建个人空间" : "进入 Studio"}
           </button>
-        </form>
-        {!setup && (
+        </form>}
+        {setupRequired === false && (
           <PasskeyLogin email={email} onAuthenticated={onAuthenticated} />
         )}
-        <p className="auth-note">Passkey 可在登录后添加到当前设备。</p>
+        {setupRequired === false && <p className="auth-note">Passkey 可在登录后添加到当前设备。</p>}
       </section>
     </main>
   );

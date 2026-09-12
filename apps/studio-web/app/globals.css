@@ -172,23 +172,22 @@ select:focus-visible,
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
-.segmented {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  background: var(--surface-2);
-  padding: 4px;
-  border-radius: 12px;
-  margin-bottom: 32px;
+.auth-card-heading {
+  margin-bottom: 28px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
 }
-.segmented button {
-  min-height: 44px;
-  border: 0;
-  background: transparent;
-  border-radius: 9px;
+.auth-card-heading h2 {
+  margin: 7px 0 4px;
+  font-family: Newsreader, "Noto Serif SC", serif;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.1;
 }
-.segmented button[aria-selected="true"] {
-  background: var(--surface);
-  font-weight: 700;
+.auth-card-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .88rem;
 }
 .auth-card form,
 .modal form {

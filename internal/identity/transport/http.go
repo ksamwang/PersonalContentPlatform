@@ -24,6 +24,7 @@ func NewHTTP(sessions *application.Service, passkeys *application.Passkeys, cook
 }
 func (h *HTTP) Register(r chi.Router) {
 	r.Route("/v1/auth", func(r chi.Router) {
+		r.Get("/setup-status", h.setupStatus)
 		r.Post("/setup", h.setup)
 		r.Post("/login", h.login)
 		r.Post("/logout", h.logout)
@@ -37,6 +38,16 @@ func (h *HTTP) Register(r chi.Router) {
 		})
 	})
 }
+
+func (h *HTTP) setupStatus(w http.ResponseWriter, r *http.Request) {
+	required, err := h.sessions.SetupRequired(r.Context())
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "setup_status_failed", "could not read setup status")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]bool{"required": required})
+}
+
 func (h *HTTP) RequireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(h.cookieName)

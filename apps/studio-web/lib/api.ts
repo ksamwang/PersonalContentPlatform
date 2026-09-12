@@ -122,6 +122,7 @@ async function requestItems<T>(path: string, init?:RequestInit): Promise<{ items
 
 export const api = {
   me: () => request<Principal>("/v1/auth/me"),
+  setupStatus: () => request<{ required: boolean }>("/v1/auth/setup-status"),
   setup: (input: object) =>
     request<Principal>("/v1/auth/setup", {
       method: "POST",

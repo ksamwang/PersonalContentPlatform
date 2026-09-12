@@ -25,6 +25,11 @@ func NewService(repo ports.Repository, pepper string, sessionTTL time.Duration) 
 	return &Service{repo: repo, pepper: pepper, sessionTTL: sessionTTL}
 }
 
+func (s *Service) SetupRequired(ctx context.Context) (bool, error) {
+	exists, err := s.repo.HasUsers(ctx)
+	return !exists, err
+}
+
 func (s *Service) Setup(ctx context.Context, email, displayName, password string) (domain.Principal, string, error) {
 	exists, err := s.repo.HasUsers(ctx)
 	if err != nil {
