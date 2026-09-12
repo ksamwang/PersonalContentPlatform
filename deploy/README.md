@@ -21,6 +21,8 @@
 只需编辑根目录的 `.env`：
 
 - `DOCKER_REGISTRY`：默认 `docker.m.daocloud.io`，用于服务器无法访问 Docker Hub 的环境。
+- `GOPROXY`：默认 `https://goproxy.cn,direct`，用于下载 Go 依赖。
+- `NPM_REGISTRY`：默认 `https://registry.npmmirror.com`，用于下载前端依赖。
 - `POSTGRES_PASSWORD`：使用 URL 安全的随机密码，建议 `openssl rand -hex 24`。
 - `PASSWORD_PEPPER`：首次部署生成后固定保存，建议 `openssl rand -hex 32`。
 - `PUBLIC_REVALIDATE_TOKEN`：建议 `openssl rand -hex 32`。

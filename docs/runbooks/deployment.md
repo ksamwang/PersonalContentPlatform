@@ -1,7 +1,7 @@
 # 宝塔 Docker 部署 Runbook
 
 1. Windows 执行 `deploy/build.ps1`，生成 `deploy/output/pcplatform-docker-<commit>.zip`。
-2. 将完整版本目录上传为 `/www/wwwroot/pcplatform`，填写根目录 `.env` 中的 PostgreSQL 密码、Pepper 和刷新 Token。
+2. 将完整版本目录上传为 `/www/wwwroot/pcplatform`，填写根目录 `.env` 中的 PostgreSQL 密码、Pepper 和刷新 Token；国内网络保留默认的 Docker、Go 和 npm 镜像源配置。
 3. 执行 `docker pull docker.m.daocloud.io/library/alpine:3.22` 确认镜像仓库连通，再执行 `docker compose --env-file .env -f deploy/compose/compose.yml config` 检查最终配置。
 4. 执行 `docker compose --env-file .env -f deploy/compose/compose.yml up -d --build`。迁移器成功退出后 API 和 Worker 才会启动。
 5. 宝塔将 `loshin.org` 反向代理到 `127.0.0.1:23000`，将 `studio.loshin.org` 反向代理到 `127.0.0.1:23001`，并为两个站点启用 HTTPS。
