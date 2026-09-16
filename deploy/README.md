@@ -2,6 +2,28 @@
 
 生产环境由 Docker Compose 运行 PostgreSQL、迁移器、API、Worker、Studio 和 Public Web。Node.js 24 与 Go 编译环境都在镜像中，宿主操作系统不需要安装 Node.js 或 Go。宝塔继续负责 Nginx、域名和 HTTPS，不运行应用进程，也不启动 Caddy。
 
+## 自动发布
+
+`main` 分支推送后，GitHub Actions 会先执行 Go 与前端检查，再构建并推送以下三个带完整 Git SHA 标签的 GHCR 镜像：
+
+```text
+ghcr.io/ksamwang/personal-content-platform-backend
+ghcr.io/ksamwang/personal-content-platform-studio
+ghcr.io/ksamwang/personal-content-platform-public
+```
+
+生产服务器的仓库级 Self-hosted Runner 使用 `pcplatform-production` 标签，只执行部署任务，不承担源码构建。部署脚本 `deploy/scripts/deploy.sh` 会锁定并发发布、备份数据库、拉取同一提交的镜像、执行迁移、更新容器和检查公开站及 API；健康检查失败时恢复上一个应用镜像版本，数据库迁移不自动回滚。
+
+生产环境使用 `deploy/compose/compose.prod.yml`，配置仍读取服务器上的 `/www/wwwroot/pcplatform/.env`。以下值由生产环境持有，不提交 Git：
+
+```dotenv
+COMPOSE_PROJECT_NAME=pcplatform
+PUBLIC_WEB_PORT=23000
+STUDIO_WEB_PORT=23001
+```
+
+日常发布只需合并或推送到 `main`。下面的完整部署包流程保留为首次部署和 CI/CD 故障时的手动备用方式。
+
 ## 1. 在 Windows 生成完整部署包
 
 ```powershell
