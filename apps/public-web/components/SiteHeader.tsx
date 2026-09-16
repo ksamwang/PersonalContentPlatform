@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Languages, Rss, Search } from "lucide-react";
+import { BrandMark } from "./BrandMark";
 export function SiteHeader({ locale, name="Field Notes", rss=true,alternate }: { locale: string; name?:string; rss?:boolean;alternate?:string }) {
   const other = locale === "zh" ? "en" : "zh";
   return (
     <header className="site-header">
       <Link className="wordmark" href={`/${locale}`}>
-        {name.toUpperCase()}<span>.</span>
+        <BrandMark className="brand-mark" size={34}/><b>{name.toUpperCase()}<span>.</span></b>
       </Link>
       <nav aria-label={locale === "zh" ? "主要导航" : "Primary navigation"}>
         <Link href={`/${locale}`}>{locale === "zh" ? "最新" : "Latest"}</Link>

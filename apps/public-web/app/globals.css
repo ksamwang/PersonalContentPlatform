@@ -57,14 +57,19 @@ a:focus-visible {
   border-bottom: 1px solid var(--line);
 }
 .wordmark {
+  align-items: center;
+  display: inline-flex;
+  gap: 10px;
   text-decoration: none;
   font-weight: 900;
   letter-spacing: -0.04em;
   font-size: 1.15rem;
 }
-.wordmark span {
+.wordmark b { font: inherit; }
+.wordmark b span {
   color: var(--accent);
 }
+.brand-mark { color: var(--paper); flex: 0 0 auto; }
 .site-header nav {
   display: flex;
   align-items: center;
