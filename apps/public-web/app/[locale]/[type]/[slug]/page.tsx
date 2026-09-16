@@ -4,6 +4,7 @@ import { SiteHeader } from "../../../../components/SiteHeader";
 import { ShareActions } from "../../../../components/ShareActions";
 import { articleExcerpt } from "../../../../lib/article-text";
 import { getPage, getPublicSettings, publicBase } from "../../../../lib/content";
+import { socialImageURL } from "../../../../lib/social-image";
 type Props = {
   params: Promise<{ locale: string; type: string; slug: string }>;
 };
@@ -11,13 +12,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = await params,
     page = await getPage(p.locale === "zh" ? "zh-CN" : "en", p.type, p.slug);
   if (!page) return {};
-  const settings=await getPublicSettings(),base=publicBase(settings),cover=page.metadata?.cover_asset_id?`/media/${page.metadata.cover_asset_id}/content-1280`:undefined;
+  const settings=await getPublicSettings(),base=publicBase(settings),title=page.metadata?.seo_title||page.title,description=page.metadata?.seo_description||page.summary,image=socialImageURL(base,{locale:page.locale,type:p.type,slug:p.slug,publishedAt:page.published_at});
   const languages=Object.fromEntries((page.alternates??[]).map(item=>[item.locale==="zh-CN"?"zh":item.locale,`/${item.locale==="zh-CN"?"zh":item.locale}/${item.type}/${item.slug}`]));
   return {
-    title: page.metadata?.seo_title||page.title,
-    description: page.metadata?.seo_description||page.summary,
+    title,
+    description,
     alternates: { canonical: new URL(`/${p.locale}/${p.type}/${p.slug}`,base),languages },
-    openGraph:{type:"article",title:page.metadata?.seo_title||page.title,description:page.metadata?.seo_description||page.summary,url:`/${p.locale}/${p.type}/${p.slug}`,images:cover?[{url:cover}]:[]},
+    openGraph:{type:"article",title,description,url:`/${p.locale}/${p.type}/${p.slug}`,images:[{url:image,width:1200,height:630,type:"image/png",alt:p.locale==="zh"?`${page.title} 分享卡片`:`${page.title} social card`}]},
+    twitter:{card:"summary_large_image",title,description,images:[image]},
   };
 }
 export default async function Published({ params }: Props) {
