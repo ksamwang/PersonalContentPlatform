@@ -48,7 +48,6 @@ function Visual({ accent, coverData }: { accent: string; coverData?: string }) {
       style={{
         alignItems: "center",
         backgroundColor: "#ece7de",
-        backgroundImage: coverData ? `url(${coverData})` : undefined,
         backgroundPosition: "center",
         backgroundSize: "cover",
         borderLeft: "1px solid rgba(23,20,22,.18)",
@@ -60,6 +59,7 @@ function Visual({ accent, coverData }: { accent: string; coverData?: string }) {
         right: 0,
         top: 0,
         width: 490,
+        ...(coverData ? { backgroundImage: `url(${coverData})` } : {}),
       }}
     >
       {coverData ? (
