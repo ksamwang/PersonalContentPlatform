@@ -74,7 +74,11 @@ function Visual({ accent, coverData }: { accent: string; coverData?: string }) {
 }
 
 export function SocialCard(props: SocialCardProps) {
-  const zh = props.locale === "zh-CN" || props.locale === "zh";
+  const zh = props.locale.toLowerCase().startsWith("zh");
+  const bodyFont = zh ? "Noto Sans SC" : "Public Sans";
+  const titleFont = /\p{Script=Han}/u.test(props.title)
+    ? "Noto Sans SC"
+    : "Newsreader";
   const titleLimit = props.kind === "article" ? (zh ? 42 : 76) : 54;
   const descriptionLimit = zh ? 72 : 130;
   const date = props.date
@@ -87,6 +91,7 @@ export function SocialCard(props: SocialCardProps) {
         background: "#f4f0e8",
         color: "#171416",
         display: "flex",
+        fontFamily: bodyFont,
         height: "100%",
         overflow: "hidden",
         position: "relative",
@@ -105,7 +110,7 @@ export function SocialCard(props: SocialCardProps) {
 
         <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "center", paddingTop: 24 }}>
           {props.kind === "article" && <div style={{ color: props.accent, display: "flex", fontSize: 16, fontWeight: 800, letterSpacing: ".15em", marginBottom: 22, textTransform: "uppercase" }}>{props.type || "ARTICLE"}{date ? `  ·  ${date}` : ""}</div>}
-          <div style={{ display: "flex", fontSize: props.kind === "article" ? 62 : 68, fontWeight: 650, letterSpacing: "-.055em", lineHeight: 1.04, maxHeight: 210, overflow: "hidden" }}>{shortened(props.title, titleLimit)}</div>
+          <div style={{ display: "flex", fontFamily: titleFont, fontSize: props.kind === "article" ? 62 : 68, fontWeight: 700, letterSpacing: zh ? "-.025em" : "-.055em", lineHeight: 1.04, maxHeight: 210, overflow: "hidden" }}>{shortened(props.title, titleLimit)}</div>
           <div style={{ color: "#686168", display: "flex", fontSize: 24, lineHeight: 1.48, marginTop: 24, maxHeight: 108, overflow: "hidden" }}>{shortened(props.description, descriptionLimit)}</div>
         </div>
 

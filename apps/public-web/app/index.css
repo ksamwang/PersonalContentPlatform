@@ -20,7 +20,7 @@
 }
 .publication-index strong {
   grid-column:3; grid-row:1;
-  font-family: Georgia, "Noto Serif SC", serif;
+  font-family: var(--font-serif);
   font-size: 1.7rem;
   font-weight: 500;
 }

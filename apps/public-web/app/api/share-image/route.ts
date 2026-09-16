@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { ImageResponse } from "next/og";
 import { SocialCard } from "../../../components/social-card/SocialCard";
 import { getPage, getPublicSettings, publicBase } from "../../../lib/content";
+import { socialFonts } from "../../../lib/social-fonts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export async function GET(request: Request) {
   const accent = settings.site.accent_color || "#d82f76";
   const cover = await coverData(page?.metadata?.cover_asset_id);
   const zh = locale === "zh-CN" || locale === "zh" || (!locale && settings.workspace.default_locale === "zh-CN");
+  const fonts = await socialFonts();
 
   return new ImageResponse(
     createElement(SocialCard, {
@@ -53,6 +55,7 @@ export async function GET(request: Request) {
     }),
     {
       ...imageSize,
+      fonts,
       headers: {
         "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400",
       },

@@ -90,7 +90,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  font: 700 .57rem/1.35 Arial, sans-serif;
+  font: 700 .57rem/1.35 var(--font-sans);
   letter-spacing: .13em;
   text-transform: uppercase;
 }
@@ -163,7 +163,7 @@
   top: 31%;
   left: 1%;
   color: color-mix(in srgb, var(--ink) 46%, transparent);
-  font: 700 .49rem/1 Arial, sans-serif;
+  font: 700 .49rem/1 var(--font-sans);
   letter-spacing: .14em;
   rotate: -90deg;
   transform-origin: left top;
@@ -176,7 +176,7 @@
   top: 10%;
   max-width: 112px;
   color: color-mix(in srgb, var(--ink) 42%, transparent);
-  font: 700 .49rem/1.45 Arial, sans-serif;
+  font: 700 .49rem/1.45 var(--font-sans);
   letter-spacing: .12em;
   text-transform: uppercase;
   pointer-events: none;

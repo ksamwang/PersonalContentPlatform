@@ -90,7 +90,7 @@
   width: 100%;
   margin: 2em 0;
   border-collapse: collapse;
-  font-family: Arial, "Noto Sans SC", sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.92rem;
 }
 
@@ -131,7 +131,7 @@
 }
 
 .share-card > div:first-child strong {
-  font-family: Georgia, "Noto Serif SC", serif;
+  font-family: var(--font-serif);
   font-size: 1.15rem;
   font-weight: 500;
 }
