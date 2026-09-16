@@ -74,4 +74,4 @@ GET    /v1/workspaces/{workspaceID}/exports/manifest.json
 
 ## 部署
 
-生产环境使用 Docker Compose 运行 PostgreSQL + pgvector、API、Worker、Studio 和 Public Web，Node.js 24 固定在前端镜像内；宝塔负责域名、HTTPS 和反向代理。推送 `main` 后，GitHub Actions 构建带提交号的 GHCR 镜像，生产 Self-hosted Runner 自动迁移并更新容器。Windows 执行 `deploy/build.ps1` 仍可生成手动备用部署包。具体步骤见 [deploy/README.md](deploy/README.md)，备份恢复与故障处理见 [docs/runbooks](docs/runbooks)。
+生产环境使用 Docker Compose 运行 PostgreSQL + pgvector、API、Worker、Studio 和 Public Web，Node.js 24 固定在前端镜像内；宝塔负责域名、HTTPS 和反向代理。推送 `main` 后，GitHub Actions 构建带提交号的 GHCR 镜像，生产 Self-hosted Runner 自动迁移并更新容器。Windows 执行 `deploy/build.ps1` 仍可生成手动备用部署包。首次部署、Runner、宝塔、自动发布、验证和回滚见 [完整部署文档](deploy/README.md)，日常运维速查见 [docs/runbooks/deployment.md](docs/runbooks/deployment.md)。
