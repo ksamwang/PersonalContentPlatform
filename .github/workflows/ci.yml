@@ -1,5 +1,13 @@
-name: CI
-on: [push, pull_request]
+name: CI/CD
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   go:
     runs-on: ubuntu-latest
@@ -19,3 +27,84 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build:web
+
+  images:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [go, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 构建后端镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/ksamwang/personal-content-platform-backend:${{ github.sha }}
+            ghcr.io/ksamwang/personal-content-platform-backend:main
+          build-args: |
+            DOCKER_REGISTRY=docker.io
+            GOPROXY=https://proxy.golang.org,direct
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+      - name: 构建 Studio 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/ksamwang/personal-content-platform-studio:${{ github.sha }}
+            ghcr.io/ksamwang/personal-content-platform-studio:main
+          build-args: |
+            DOCKER_REGISTRY=docker.io
+            NPM_REGISTRY=https://registry.npmjs.org
+            WEB_APP=studio-web
+            API_ORIGIN=http://api:8080
+          cache-from: type=gha,scope=studio
+          cache-to: type=gha,mode=max,scope=studio
+      - name: 构建 Public Web 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/ksamwang/personal-content-platform-public:${{ github.sha }}
+            ghcr.io/ksamwang/personal-content-platform-public:main
+          build-args: |
+            DOCKER_REGISTRY=docker.io
+            NPM_REGISTRY=https://registry.npmjs.org
+            WEB_APP=public-web
+            API_ORIGIN=http://api:8080
+          cache-from: type=gha,scope=public-web
+          cache-to: type=gha,mode=max,scope=public-web
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: images
+    runs-on: [self-hosted, Linux, X64, pcplatform-production]
+    concurrency:
+      group: pcplatform-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 部署生产版本
+        env:
+          PCP_DEPLOY_ENV: /www/wwwroot/pcplatform/.env
+        run: bash deploy/scripts/deploy.sh "${GITHUB_SHA}"
