@@ -219,7 +219,6 @@ export const api = {
       method: "PUT",
       headers: plan.headers,
       body: file,
-      credentials: "include",
     });
     if (!uploaded.ok) throw new Error("文件上传失败");
     return request<Asset>(`/v1/workspaces/${ws}/assets:finalize-upload`, {
