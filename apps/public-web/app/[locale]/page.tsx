@@ -68,7 +68,7 @@ export default async function Home({
             </div>
           )}
         </section>
-        {(collections.length>0||tags.length>0)&&<section className="discover-sections">{collections.length>0&&<div><div className="section-heading"><span>02</span><h2>{zh?"内容合集":"Collections"}</h2></div><div className="collection-links">{collections.map(item=><Link key={item.slug} href={`/${locale}/collections/${item.slug}`}>{item.title}<ArrowUpRight/></Link>)}</div></div>}{tags.length>0&&<div><div className="section-heading"><span>03</span><h2>{zh?"按标签发现":"Browse tags"}</h2></div><div className="tag-cloud">{tags.map(item=><Link key={item.name} href={`/${locale}/search?tag=${encodeURIComponent(item.name)}`}>{item.name}<small>{item.count}</small></Link>)}</div></div>}</section>}
+        {(collections.length>0||tags.length>0)&&<section className={`discover-sections ${collections.length===0||tags.length===0?"single":""}`}>{collections.length>0&&<div><div className="section-heading"><span>02</span><h2>{zh?"内容合集":"Collections"}</h2></div><div className="collection-links">{collections.map(item=><Link key={item.slug} href={`/${locale}/collections/${item.slug}`}>{item.title}<ArrowUpRight/></Link>)}</div></div>}{tags.length>0&&<div><div className="section-heading"><span>{collections.length>0?"03":"02"}</span><h2>{zh?"按标签发现":"Browse tags"}</h2></div><div className="tag-cloud home-tag-cloud">{tags.map(item=><Link key={item.name} href={`/${locale}/search?tag=${encodeURIComponent(item.name)}`}>{item.name}<small>{item.count}</small></Link>)}</div></div>}</section>}
       </main>
       <footer>
         <span>{settings.site.name}</span>

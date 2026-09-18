@@ -5,6 +5,7 @@ import { ShareActions } from "../../../../components/ShareActions";
 import { articleExcerpt } from "../../../../lib/article-text";
 import { getPage, getPublicSettings, publicBase } from "../../../../lib/content";
 import { socialImageURL } from "../../../../lib/social-image";
+import { normalizeTags } from "../../../../lib/tags";
 type Props = {
   params: Promise<{ locale: string; type: string; slug: string }>;
 };
@@ -43,7 +44,7 @@ export default async function Published({ params }: Props) {
             </span>
             <h1>{page.title}</h1>
             {page.summary && <p className="dek">{page.summary}</p>}
-            {page.metadata?.tags?.length?<div className="article-tags">{page.metadata.tags.map(tag=><a key={tag} href={`/${p.locale}/search?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div>:null}
+            {normalizeTags(page.metadata?.tags).length?<div className="article-tags">{normalizeTags(page.metadata?.tags).map(tag=><a key={tag} href={`/${p.locale}/search?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div>:null}
           </header>
           {cover&&<picture className="article-cover"><source media="(max-width: 640px)" srcSet={`/media/${page.metadata.cover_asset_id}/thumbnail`}/><img src={cover} alt=""/></picture>}
           <div

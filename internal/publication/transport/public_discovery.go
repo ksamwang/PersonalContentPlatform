@@ -9,7 +9,7 @@ import (
 )
 
 func (h *HTTP) tags(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.db.Query(r.Context(), `SELECT tag.value,count(*) FROM publication_views v JOIN workspaces ws ON ws.id=v.workspace_id CROSS JOIN LATERAL jsonb_array_elements_text(CASE WHEN jsonb_typeof(v.metadata_json->'tags')='array' THEN v.metadata_json->'tags' ELSE '[]'::jsonb END) tag(value) WHERE ws.slug=$1 AND v.locale=$2 AND v.visibility='public' GROUP BY tag.value ORDER BY count(*) DESC,tag.value`, chi.URLParam(r, "workspace"), chi.URLParam(r, "locale"))
+	rows, err := h.db.Query(r.Context(), `SELECT min(btrim(tag.value)),count(DISTINCT v.content_id) FROM publication_views v JOIN workspaces ws ON ws.id=v.workspace_id CROSS JOIN LATERAL jsonb_array_elements_text(CASE WHEN jsonb_typeof(v.metadata_json->'tags')='array' THEN v.metadata_json->'tags' ELSE '[]'::jsonb END) raw_tag(value) CROSS JOIN LATERAL regexp_split_to_table(raw_tag.value,'[,，、;；]+') tag(value) WHERE ws.slug=$1 AND v.locale=$2 AND v.visibility='public' AND btrim(tag.value)<>'' GROUP BY lower(btrim(tag.value)) ORDER BY count(DISTINCT v.content_id) DESC,min(btrim(tag.value))`, chi.URLParam(r, "workspace"), chi.URLParam(r, "locale"))
 	if err != nil {
 		httpx.Error(w, 500, "tags_failed", "tags are unavailable")
 		return
