@@ -26,15 +26,18 @@
 }
 
 .article-tags {
-  margin-top: 24px;
+  align-items: center;
+  margin-top: 28px;
+  padding-top: 4px;
 }
 
-.article-cover {
-  width: min(980px, calc(100vw - 40px));
-  max-width: none;
-  margin-top: clamp(40px, 5vw, 64px);
-  margin-left: 50%;
-  transform: translateX(-50%);
+.article-tags-label {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .article-body {
@@ -156,11 +159,6 @@
 
   .article-shell h1 {
     font-size: clamp(2.8rem, 14vw, 4.5rem);
-  }
-
-  .article-cover {
-    width: calc(100vw - 40px);
-    margin-top: 38px;
   }
 
   .article-body {

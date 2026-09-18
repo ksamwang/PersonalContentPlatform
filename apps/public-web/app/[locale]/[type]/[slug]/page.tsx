@@ -31,6 +31,7 @@ export default async function Published({ params }: Props) {
   if (!page) notFound();
   const otherLocale=p.locale==="zh"?"en":"zh",alternate=page.alternates?.find(item=>(item.locale==="zh-CN"?"zh":item.locale)===otherLocale),alternatePath=alternate?`/${otherLocale}/${alternate.type}/${alternate.slug}`:undefined;
   const cover=page.metadata?.cover_asset_id?`/media/${page.metadata.cover_asset_id}/content-1280`:undefined;
+  const tags=normalizeTags(page.metadata?.tags);
   return (
     <div data-theme={settings.site.theme||"paper"} style={{"--accent":settings.site.accent_color||"#d82f76"} as React.CSSProperties}>
       <SiteHeader locale={p.locale} name={settings.site.name} rss={settings.site.rss_enabled} alternate={alternatePath}/>
@@ -45,15 +46,14 @@ export default async function Published({ params }: Props) {
             </span>
             <h1>{page.title}</h1>
             {page.summary && <p className="dek">{page.summary}</p>}
-            {normalizeTags(page.metadata?.tags).length?<div className="article-tags">{normalizeTags(page.metadata?.tags).map(tag=><a key={tag} href={`/${p.locale}/search?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div>:null}
           </header>
-          {cover&&<picture className="article-cover"><source media="(max-width: 640px)" srcSet={`/media/${page.metadata.cover_asset_id}/thumbnail`}/><img src={cover} alt=""/></picture>}
           <div
             className="article-body"
             dangerouslySetInnerHTML={{ __html: page.html }}
           />
           {!alternate&&<p className="translation-note">{p.locale==="zh"?"此内容暂时没有英文版本。":"A Chinese version is not available yet."}</p>}
           <ShareActions locale={p.locale} title={page.title} summary={page.summary} excerpt={articleExcerpt(page.html,page.summary)} type={p.type} publishedAt={page.published_at} siteName={settings.site.name} cover={cover} accent={settings.site.accent_color||"#d82f76"} footer={settings.site.share_footer}/>
+          {tags.length?<nav className="article-tags" aria-label={p.locale==="zh"?"文章标签":"Article tags"}><span className="article-tags-label">{p.locale==="zh"?"相关主题":"Topics"}</span>{tags.map(tag=><a key={tag} href={`/${p.locale}/search?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</nav>:null}
         </article>
       </main>
       <footer>
