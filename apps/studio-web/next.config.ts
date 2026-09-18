@@ -1,6 +1,19 @@
 import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
+  async headers() {
+    return [
+      {
+        source: "/",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-store, no-cache, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
