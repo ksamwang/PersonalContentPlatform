@@ -13,14 +13,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = await params,
     page = await getPage(p.locale === "zh" ? "zh-CN" : "en", p.type, p.slug);
   if (!page) return {};
-  const settings=await getPublicSettings(),base=publicBase(settings),title=page.metadata?.seo_title||page.title,description=page.metadata?.seo_description||page.summary,image=socialImageURL(base,{locale:page.locale,type:p.type,slug:p.slug,publishedAt:page.published_at});
+  const settings=await getPublicSettings(),base=publicBase(settings),title=page.metadata?.seo_title||page.title,description=page.metadata?.seo_description||page.summary,cardImage=socialImageURL(base,{locale:page.locale,type:p.type,slug:p.slug,publishedAt:page.published_at}),coverImage=page.metadata?.cover_asset_id?new URL(`/media/${page.metadata.cover_asset_id}/content-1280`,base).toString():undefined;
+  const images=coverImage?[{url:coverImage,alt:page.title},{url:cardImage,width:1200,height:630,type:"image/png",alt:p.locale==="zh"?`${page.title} 分享卡片`:`${page.title} social card`}]:[{url:cardImage,width:1200,height:630,type:"image/png",alt:p.locale==="zh"?`${page.title} 分享卡片`:`${page.title} social card`}];
   const languages=Object.fromEntries((page.alternates??[]).map(item=>[item.locale==="zh-CN"?"zh":item.locale,`/${item.locale==="zh-CN"?"zh":item.locale}/${item.type}/${item.slug}`]));
   return {
     title,
     description,
     alternates: { canonical: new URL(`/${p.locale}/${p.type}/${p.slug}`,base),languages },
-    openGraph:{type:"article",title,description,url:`/${p.locale}/${p.type}/${p.slug}`,images:[{url:image,width:1200,height:630,type:"image/png",alt:p.locale==="zh"?`${page.title} 分享卡片`:`${page.title} social card`}]},
-    twitter:{card:"summary_large_image",title,description,images:[image]},
+    openGraph:{type:"article",title,description,url:`/${p.locale}/${p.type}/${p.slug}`,publishedTime:page.published_at,tags:normalizeTags(page.metadata?.tags),images},
+    twitter:{card:"summary_large_image",title,description,images:images.map(image=>image.url)},
   };
 }
 export default async function Published({ params }: Props) {

@@ -22,13 +22,20 @@ export function ShareActions({ locale, title, summary, siteName, cover, accent, 
   const [busy, setBusy] = useState(false);
   const zh = locale === "zh";
 
+  function versionedShareURL() {
+    const url = new URL(location.href);
+    url.searchParams.set("share", new Date(publishedAt).getTime().toString(36));
+    return url.toString();
+  }
+
   async function share() {
-    const data = { title, text: summary, url: location.href };
+    const url = versionedShareURL();
+    const data = { title, text: summary, url };
     if (navigator.share) {
       await navigator.share(data).catch(() => {});
       return;
     }
-    await navigator.clipboard.writeText(location.href);
+    await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2200);
   }
