@@ -1,3 +1,5 @@
+import { normalizeTags } from "./tags";
+
 export type PublishedPage = {
   content_id:string;
   locale: string;
@@ -47,7 +49,23 @@ export async function listPages(locale: string,filters:{q?:string;tag?:string;ty
 }
 export type PublicCollection={title:string;slug:string;sections:{title:string;items:PublishedPage[]}[]};
 const livePublicData = { cache: "no-store" as const };
-export async function listTags(locale:string):Promise<{name:string;count:number}[]>{try{const response=await fetch(`${origin}/v1/public/${workspace}/${locale}/tags`,publicCache);return response.ok?(await response.json()).items:[]}catch{return []}}
+export async function listTags(locale:string):Promise<{name:string;count:number}[]>{
+  try {
+    const response=await fetch(`${origin}/v1/public/${workspace}/${locale}/tags`,publicCache);
+    if(!response.ok)return [];
+    const payload=await response.json() as {items?:{name:string;count:number}[]};
+    const counts=new Map<string,{name:string;count:number}>();
+    for(const item of payload.items??[]){
+      for(const name of normalizeTags([item.name])){
+        const key=name.toLocaleLowerCase(),current=counts.get(key);
+        counts.set(key,{name:current?.name??name,count:(current?.count??0)+item.count});
+      }
+    }
+    return [...counts.values()].sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,locale));
+  } catch {
+    return [];
+  }
+}
 export async function listCollections(locale:string):Promise<PublicCollection[]>{try{const response=await fetch(`${origin}/v1/public/${workspace}/${locale}/collections`,livePublicData);return response.ok?(await response.json()).items:[]}catch{return []}}
 export async function getCollection(locale:string,slug:string):Promise<PublicCollection|null>{try{const response=await fetch(`${origin}/v1/public/${workspace}/${locale}/collections/${encodeURIComponent(slug)}`,livePublicData);if(response.status===404)return null;return response.ok?response.json():null}catch{return null}}
 export function publicBase(settings:PublicSettings){return settings.site.public_url||process.env.PUBLIC_SITE_ORIGIN||"http://localhost:3000"}
