@@ -83,6 +83,21 @@ func main() {
 			}
 			return taskapp.ResultID(suggestionID), nil
 		},
+		"ai.translate": func(ctx context.Context, ws uuid.UUID, raw json.RawMessage) (string, error) {
+			var input struct {
+				UserID               uuid.UUID `json:"user_id"`
+				SourceLocalizationID uuid.UUID `json:"source_localization_id"`
+				TargetLocalizationID uuid.UUID `json:"target_localization_id"`
+			}
+			if err := json.Unmarshal(raw, &input); err != nil {
+				return "", err
+			}
+			draft, err := ai.Translate(ctx, ws, input.UserID, input.SourceLocalizationID, input.TargetLocalizationID)
+			if err != nil {
+				return "", err
+			}
+			return taskapp.ResultID(draft.LocalizationID), nil
+		},
 	}
 	errors := make(chan error, 3)
 	cacheInvalidator := publication.NewCacheInvalidator(cfg.PublicWebOrigin, cfg.PublicRevalidateToken)

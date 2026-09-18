@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { Eye, History, PanelRight, Save, Send } from "lucide-react";
-import { api, APIError, Content, Draft, Readiness } from "../../lib/api";
+import { api, APIError, Content, Draft, Readiness, waitForTask } from "../../lib/api";
 import { AssetPickerDialog } from "./AssetPickerDialog";
 import { ContentPropertiesPanel } from "./ContentPropertiesPanel";
 import { DraftConflictNotice } from "./DraftConflictNotice";
@@ -207,7 +207,7 @@ export function EditorPanel({
     const source=content.localizations.find(item=>item.locale===content.default_locale);
     if(!source){setStatus("找不到原始语言版本");return}
     setTranslationBusy(true);setStatus("AI 正在翻译完整内容…");
-    try{if(timer.current)clearTimeout(timer.current);await save();const next=await api.translateLocalization(workspace,localization.id,source.id);applyRestoredDraft(next);const refreshed=await api.content(workspace,content.id);onContentChanged(refreshed);setStatus("AI 译稿已生成，请校对后发布")}
+    try{if(timer.current)clearTimeout(timer.current);const saved=await save();if(!saved)return;const queued=await api.translateLocalization(workspace,localization.id,source.id);setStatus("AI 翻译已进入后台，正在保持原文结构生成译稿…");await waitForTask(workspace,queued.job_id,240000);const next=await api.draft(workspace,localization.id);applyRestoredDraft(next);const refreshed=await api.content(workspace,content.id);onContentChanged(refreshed);setStatus("AI 译稿已生成，请校对后发布")}
     catch(error){setStatus(error instanceof Error?`翻译失败：${error.message}`:"翻译失败，请重试")}finally{setTranslationBusy(false)}
   }
   async function overwriteConflict(){if(!conflict)return;try{const latest=await api.draft(workspace,conflict.localizationID);draftRef.current=latest;setDraft(latest);await performSave(conflict.localizationID,conflict.values)}catch(error){setStatus(error instanceof Error?error.message:"冲突恢复失败")}}

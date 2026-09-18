@@ -78,6 +78,15 @@ func (h *HTTP) translate(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, 400, "invalid_request", "source_localization_id is required")
 		return
 	}
+	if h.queue != nil {
+		jobID, queueErr := h.queue.Enqueue(r.Context(), ws, "ai.translate", map[string]any{"user_id": user, "source_localization_id": input.SourceLocalizationID, "target_localization_id": targetID})
+		if queueErr != nil {
+			httpx.Error(w, 500, "task_enqueue_failed", queueErr.Error())
+			return
+		}
+		httpx.JSON(w, http.StatusAccepted, map[string]any{"job_id": jobID, "state": "pending"})
+		return
+	}
 	draft, err := h.service.Translate(r.Context(), ws, user, input.SourceLocalizationID, targetID)
 	if err != nil {
 		httpx.Error(w, 422, "translation_failed", err.Error())
